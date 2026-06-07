@@ -3,7 +3,7 @@
  * Plugin Name:       ZT Group — Zabbix WP Monitor
  * Plugin URI:        https://github.com/ZTGroupCorp/zbx-wp-monitor
  * Description:       Expone métricas de salud del sitio (updates, integridad del core, admins, cron, autoload) a Zabbix vía REST autenticado por token.
- * Version:           1.0.0
+ * Version:           1.0.1
  * Author:            ZT Group
  * Author URI:        https://ztgroupcorp.com
  * License:           GPL-2.0-or-later
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'ZTGRP_MONITOR_VERSION', '1.0.0' );
+define( 'ZTGRP_MONITOR_VERSION', '1.0.1' );
 define( 'ZTGRP_MONITOR_FILE', __FILE__ );
 
 require_once __DIR__ . '/includes/metrics.php';

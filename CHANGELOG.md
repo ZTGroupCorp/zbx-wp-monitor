@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1 — 2026-06-07
+
+- Release de prueba para validar el auto-update por GitHub releases (sin cambios funcionales).
+
 ## 1.0.0 — 2026-06-07
 
 - Versión inicial.
