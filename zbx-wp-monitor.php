@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name:       ZT Group — Zabbix WP Monitor
+ * Plugin Name:       ZT Zabbix WP Monitor
  * Plugin URI:        https://github.com/ZTGroupCorp/zbx-wp-monitor
  * Description:       Expone métricas de salud del sitio (updates, integridad del core, admins, cron, autoload) a Zabbix vía REST autenticado por token.
- * Version:           1.0.2
+ * Version:           1.0.3
  * Author:            ZT Group
  * Author URI:        https://ztgroupcorp.com
  * License:           GPL-2.0-or-later
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'ZTGRP_MONITOR_VERSION', '1.0.2' );
+define( 'ZTGRP_MONITOR_VERSION', '1.0.3' );
 define( 'ZTGRP_MONITOR_FILE', __FILE__ );
 
 require_once __DIR__ . '/includes/metrics.php';
@@ -87,22 +87,31 @@ function ztgrp_monitor_maybe_upgrade() {
 	if ( ! is_multisite() ) {
 		return; // En single-site el storage no cambió: nada que migrar.
 	}
-	if ( '' !== (string) get_site_option( 'ztgrp_monitor_token' ) ) {
-		return; // Ya hay token de red.
+
+	// 1. Token: si falta el de red, preservar el previo (vivía en las options del
+	//    sitio principal) o generar uno nuevo. Así una red ya operativa no pierde
+	//    su token al actualizar.
+	if ( '' === (string) get_site_option( 'ztgrp_monitor_token' ) ) {
+		$legacy = (string) get_blog_option( get_main_site_id(), 'ztgrp_monitor_token' );
+		update_site_option(
+			'ztgrp_monitor_token',
+			'' !== $legacy ? $legacy : ztgrp_monitor_generate_token()
+		);
+		if ( is_main_site() && ! wp_next_scheduled( 'ztgrp_monitor_integrity_run' ) ) {
+			wp_schedule_event( time() + DAY_IN_SECONDS, 'daily', 'ztgrp_monitor_integrity_run' );
+			wp_schedule_single_event( time() + 120, 'ztgrp_monitor_integrity_run' );
+		}
 	}
 
-	// Preservar el token previo (vivía en las options del sitio principal); si no
-	// hay, generar uno nuevo. Así una red ya operativa no pierde su token.
-	$legacy = (string) get_blog_option( get_main_site_id(), 'ztgrp_monitor_token' );
-	update_site_option(
-		'ztgrp_monitor_token',
-		'' !== $legacy ? $legacy : ztgrp_monitor_generate_token()
-	);
-
-	// Asegurar el cron de integridad en el sitio principal (donde corre ahora).
-	if ( is_main_site() && ! wp_next_scheduled( 'ztgrp_monitor_integrity_run' ) ) {
-		wp_schedule_event( time() + DAY_IN_SECONDS, 'daily', 'ztgrp_monitor_integrity_run' );
-		wp_schedule_single_event( time() + 120, 'ztgrp_monitor_integrity_run' );
+	// 2. Integridad: si la option de red está vacía, arrastrar el último resultado
+	//    del sitio principal para NO reportar un falso OK (el default es ok=1) hasta
+	//    que corra el próximo cron. Independiente del token: cubre también una red
+	//    que ya saltó a una versión con storage de red pero con la integridad sin migrar.
+	if ( false === get_site_option( 'ztgrp_monitor_integrity' ) ) {
+		$legacy_integrity = get_blog_option( get_main_site_id(), 'ztgrp_monitor_integrity' );
+		if ( is_array( $legacy_integrity ) ) {
+			update_site_option( 'ztgrp_monitor_integrity', $legacy_integrity );
+		}
 	}
 }
 
@@ -153,16 +162,16 @@ function ztgrp_monitor_admin_menu() {
 		// Configuración a nivel red: Network Admin → Settings.
 		add_submenu_page(
 			'settings.php',
-			'Zabbix WP Monitor',
-			'Zabbix Monitor',
+			'ZT Zabbix WP Monitor',
+			'ZT Zabbix Monitor',
 			'manage_network_options',
 			'zbx-wp-monitor',
 			'ztgrp_monitor_settings_page'
 		);
 	} else {
 		add_options_page(
-			'Zabbix WP Monitor',
-			'Zabbix Monitor',
+			'ZT Zabbix WP Monitor',
+			'ZT Zabbix Monitor',
 			'manage_options',
 			'zbx-wp-monitor',
 			'ztgrp_monitor_settings_page'
@@ -194,7 +203,7 @@ function ztgrp_monitor_settings_page() {
 	$integrity = ztgrp_monitor_net_get( 'ztgrp_monitor_integrity' );
 	?>
 	<div class="wrap">
-		<h1>Zabbix WP Monitor <small>v<?php echo esc_html( ZTGRP_MONITOR_VERSION ); ?></small></h1>
+		<h1>ZT Zabbix WP Monitor <small>v<?php echo esc_html( ZTGRP_MONITOR_VERSION ); ?></small></h1>
 
 		<h2>Endpoint</h2>
 		<p><code><?php echo esc_html( $endpoint ); ?></code></p>
@@ -202,14 +211,43 @@ function ztgrp_monitor_settings_page() {
 			En Zabbix va en la macro secreta <code>{$WP.MON.TOKEN}</code> del host virtual.</p>
 
 		<h2>Token</h2>
-		<input type="text" readonly value="<?php echo esc_attr( $token ); ?>"
-			style="width: 40em; font-family: monospace;" onclick="this.select();">
-		<form method="post" style="display:inline">
+		<p>
+			<input type="text" id="ztgrp-monitor-token" readonly value="<?php echo esc_attr( $token ); ?>"
+				style="width: 40em; font-family: monospace;" onclick="this.select();">
+			<button type="button" class="button" id="ztgrp-monitor-copy">Copiar al portapapeles</button>
+			<span id="ztgrp-monitor-copied" style="color:green; display:none; margin-left:.5em;">¡Copiado!</span>
+		</p>
+		<form method="post">
 			<?php wp_nonce_field( 'ztgrp_monitor_regen' ); ?>
 			<button class="button" name="ztgrp_regen" value="1"
 				onclick="return confirm('¿Regenerar? El token actual deja de funcionar y hay que actualizar Zabbix.');">
 				Regenerar token</button>
 		</form>
+		<script>
+		( function () {
+			var btn = document.getElementById( 'ztgrp-monitor-copy' );
+			if ( ! btn ) { return; }
+			btn.addEventListener( 'click', function () {
+				var field = document.getElementById( 'ztgrp-monitor-token' );
+				field.select();
+				field.setSelectionRange( 0, 99999 );
+				var done = function () {
+					var ok = document.getElementById( 'ztgrp-monitor-copied' );
+					ok.style.display = 'inline';
+					setTimeout( function () { ok.style.display = 'none'; }, 2000 );
+				};
+				if ( navigator.clipboard && navigator.clipboard.writeText ) {
+					navigator.clipboard.writeText( field.value ).then( done, function () {
+						document.execCommand( 'copy' );
+						done();
+					} );
+				} else {
+					document.execCommand( 'copy' );
+					done();
+				}
+			} );
+		} )();
+		</script>
 
 		<h2>Integridad del core</h2>
 		<?php if ( is_array( $integrity ) && ! empty( $integrity['checked_at'] ) ) : ?>

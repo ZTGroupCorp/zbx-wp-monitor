@@ -35,7 +35,7 @@ vía un endpoint REST autenticado por token. Pensado para monitoreo server-side
 
 1. Subir el zip desde **wp-admin → Plugins → Añadir nuevo → Subir** (o `wp plugin install zbx-wp-monitor.zip --activate`).
 2. Activar: se genera un token único para el sitio.
-3. Copiar el token desde **Ajustes → Zabbix Monitor**.
+3. Copiar el token desde **Ajustes → ZT Zabbix Monitor**.
 4. En Zabbix: pegar el token en la macro secreta `{$WP.MON.TOKEN}` del host
    virtual del sitio y linkear el template **"WordPress site by plugin"**.
 
@@ -45,7 +45,7 @@ En una red WordPress Multisite el modelo es **un host por red**: se monitorea la
 red entera como un único host de Zabbix.
 
 1. **Activar en red** (Network Activate), no site por site.
-2. Configurar desde **Network Admin → Settings → Zabbix Monitor**: hay un único
+2. Configurar desde **Network Admin → Settings → ZT Zabbix Monitor**: hay un único
    token compartido por toda la red.
 3. El endpoint a sondear es el del **sitio principal** de la red.
 
@@ -60,7 +60,7 @@ Semántica de las métricas en multisite:
   sondea); no se agregan en vivo sobre toda la red para no recargar el endpoint.
 
 En instalaciones single-site el comportamiento es el de siempre (token y datos
-por sitio, página en **Ajustes → Zabbix Monitor**).
+por sitio, página en **Ajustes → ZT Zabbix Monitor**).
 
 ## Updates
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.3 — 2026-06-08
+
+- Fix migración Multisite: ahora arrastra el último resultado de integridad del
+  sitio principal a la option de red si esta está vacía, para no reportar un
+  **falso OK** (`checksums_ok=1` por default) en la ventana hasta el próximo cron.
+- El arrastre de integridad es **independiente del guard del token**: cubre también
+  una red que ya actualizó a 1.0.2 (token de red seteado) pero quedó con la
+  integridad sin migrar.
+- Renombrado a **"ZT Zabbix WP Monitor"** (antes "ZT Group — Zabbix WP Monitor").
+- Settings: botón **"Copiar al portapapeles"** a la derecha del campo de token;
+  el botón **"Regenerar token"** pasó debajo del campo.
+
 ## 1.0.2 — 2026-06-08
 
 - Soporte **WP Multisite**: el plugin se **activa en red** (Network Activate) y se
