@@ -20,6 +20,12 @@ define( 'ZTGRP_MONITOR_BAD_LIST_CAP', 20 );
 add_action( 'ztgrp_monitor_integrity_run', 'ztgrp_monitor_integrity_run' );
 
 function ztgrp_monitor_integrity_run() {
+	// En multisite el core es uno solo para toda la red: lo verifica únicamente
+	// el sitio principal. Los subsitios no re-checan los mismos archivos.
+	if ( is_multisite() && ! is_main_site() ) {
+		return;
+	}
+
 	$wp_version = get_bloginfo( 'version' );
 	$checksums  = ztgrp_monitor_get_checksums( $wp_version );
 
@@ -31,7 +37,7 @@ function ztgrp_monitor_integrity_run() {
 	}
 
 	$files = array_keys( $checksums );
-	$state = get_option( 'ztgrp_monitor_integrity_state' );
+	$state = ztgrp_monitor_net_get( 'ztgrp_monitor_integrity_state' );
 	if ( ! is_array( $state ) || ! isset( $state['cursor'] ) || $state['wp_version'] !== $wp_version ) {
 		$state = array(
 			'wp_version' => $wp_version,
@@ -71,12 +77,12 @@ function ztgrp_monitor_integrity_run() {
 
 	if ( $state['cursor'] < $total ) {
 		// No terminó: guardar cursor y continuar en ~1 min.
-		update_option( 'ztgrp_monitor_integrity_state', $state, false );
+		ztgrp_monitor_net_set( 'ztgrp_monitor_integrity_state', $state );
 		wp_schedule_single_event( time() + MINUTE_IN_SECONDS, 'ztgrp_monitor_integrity_run' );
 		return;
 	}
 
-	update_option(
+	ztgrp_monitor_net_set(
 		'ztgrp_monitor_integrity',
 		array(
 			'ok'         => empty( $state['bad_count'] ) ? 1 : 0,
@@ -84,10 +90,9 @@ function ztgrp_monitor_integrity_run() {
 			'bad'        => $state['bad'],
 			'checked_at' => time(),
 			'wp_version' => $wp_version,
-		),
-		false
+		)
 	);
-	delete_option( 'ztgrp_monitor_integrity_state' );
+	ztgrp_monitor_net_del( 'ztgrp_monitor_integrity_state' );
 }
 
 function ztgrp_monitor_integrity_flag( &$state, $entry ) {

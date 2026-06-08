@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 function ztgrp_monitor_collect_metrics() {
-	$integrity = get_option( 'ztgrp_monitor_integrity' );
+	$integrity = ztgrp_monitor_net_get( 'ztgrp_monitor_integrity' );
 	if ( ! is_array( $integrity ) ) {
 		$integrity = array();
 	}
@@ -57,8 +57,14 @@ function ztgrp_monitor_count_theme_updates() {
 
 /**
  * Cantidad de administradores (trigger en Zabbix es por CAMBIO del valor).
+ *
+ * En multisite los roles son por subsitio; el dato de seguridad a nivel red son
+ * los SUPER ADMINS (control total de la red). En single-site, admins del sitio.
  */
 function ztgrp_monitor_count_admins() {
+	if ( is_multisite() ) {
+		return count( get_super_admins() );
+	}
 	$q = new WP_User_Query(
 		array(
 			'role'        => 'administrator',
