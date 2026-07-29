@@ -3,7 +3,7 @@
  * Plugin Name:       ZT Zabbix WP Monitor
  * Plugin URI:        https://github.com/ZTGroupCorp/zbx-wp-monitor
  * Description:       Expone métricas de salud del sitio (updates, integridad del core, admins, cron, autoload) a Zabbix vía REST autenticado por token.
- * Version:           1.0.3
+ * Version:           1.0.4
  * Author:            ZT Group
  * Author URI:        https://ztgroupcorp.com
  * License:           GPL-2.0-or-later
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'ZTGRP_MONITOR_VERSION', '1.0.3' );
+define( 'ZTGRP_MONITOR_VERSION', '1.0.4' );
 define( 'ZTGRP_MONITOR_FILE', __FILE__ );
 
 require_once __DIR__ . '/includes/metrics.php';
@@ -258,6 +258,10 @@ function ztgrp_monitor_settings_page() {
 					<strong style="color:#c00"><?php echo (int) $integrity['bad_count']; ?> archivo(s) con problema</strong>
 				<?php endif; ?>
 			</p>
+			<?php if ( ! empty( $integrity['locale'] ) ) : ?>
+				<p>Checksums comparados contra el paquete <code><?php echo esc_html( $integrity['locale'] ); ?></code>
+					(locale del sitio: <code><?php echo esc_html( get_locale() ); ?></code>).</p>
+			<?php endif; ?>
 			<?php if ( ! empty( $integrity['bad'] ) ) : ?>
 				<ul style="font-family:monospace">
 					<?php foreach ( $integrity['bad'] as $f ) : ?>

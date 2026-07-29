@@ -1,6 +1,8 @@
 <?php
 /**
- * Colectores de métricas — solo lectura, solo conteos, nada sensible.
+ * Colectores de métricas — solo lectura. Conteos y versiones, más la lista de
+ * archivos del core que fallan el checksum (`checksums_bad`): son rutas del core
+ * de WordPress, públicas y conocidas, tope 20 entradas. Nada sensible.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -25,6 +27,11 @@ function ztgrp_monitor_collect_metrics() {
 		'autoload_kb'           => ztgrp_monitor_autoload_kb(),
 		'checksums_ok'          => isset( $integrity['ok'] ) ? (int) $integrity['ok'] : 1,
 		'checksums_bad_count'   => isset( $integrity['bad_count'] ) ? (int) $integrity['bad_count'] : 0,
+		// Qué archivos fallan, no solo cuántos: sin esto cada alerta de Zabbix
+		// obliga a entrar por SSH a correr `wp core verify-checksums`.
+		'checksums_bad'         => isset( $integrity['bad'] ) && is_array( $integrity['bad'] )
+			? array_values( array_map( 'strval', $integrity['bad'] ) )
+			: array(),
 		'checksums_checked_at'  => isset( $integrity['checked_at'] ) ? (int) $integrity['checked_at'] : 0,
 	);
 }

@@ -10,7 +10,7 @@ vía un endpoint REST autenticado por token. Pensado para monitoreo server-side
 
 ```json
 {
-  "plugin_version": "1.0.2",
+  "plugin_version": "1.0.4",
   "wp_version": "6.9.4",
   "php_version": "8.2.20",
   "core_updates": 0,
@@ -21,15 +21,23 @@ vía un endpoint REST autenticado por token. Pensado para monitoreo server-side
   "autoload_kb": 257,
   "checksums_ok": 1,
   "checksums_bad_count": 0,
+  "checksums_bad": [],
   "checksums_checked_at": 1780000000
 }
 ```
 
-- Solo conteos y versiones — nunca rutas, usuarios ni datos sensibles.
+- Conteos, versiones y las rutas del core que fallan el checksum — nunca
+  usuarios, credenciales ni datos del sitio.
 - Sin token válido → 401.
 - `checksums_*`: integridad del core contra los checksums oficiales de wp.org,
   calculada a diario por WP-Cron en lotes (no carga el request). Se ignora
-  `wp-content/` y la ausencia de `readme.html`/`license.txt` (hardening común).
+  `wp-content/` y los archivos `readme.html`/`license.txt` (ausentes por
+  hardening o editados: texto sin rol ejecutable). Los checksums se piden para el
+  locale del **paquete** instalado (`$wp_local_package` de `wp-includes/version.php`),
+  igual que `wp core verify-checksums`, no para el locale del sitio (`WPLANG`).
+- `checksums_bad`: array con las rutas que fallan (tope 20), los ausentes
+  marcados `" (ausente)"`. Sirve para triage directo desde la alerta de Zabbix,
+  sin entrar por SSH al sitio.
 
 ## Instalación
 

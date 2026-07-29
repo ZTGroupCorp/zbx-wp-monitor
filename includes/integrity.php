@@ -6,7 +6,11 @@
  *
  * Mismo criterio que la Fase B (wrapper wp-cli):
  *  - se ignora wp-content/ por completo (themes/plugins bundled cambian legítimamente),
- *  - readme.html / license.txt AUSENTES son benignos (hardening común),
+ *  - readme.html / license.txt se ignoran siempre (ausentes por hardening o
+ *    modificados: son texto sin rol ejecutable),
+ *  - el locale contra el que se comparan los checksums es el del PAQUETE del core
+ *    ($wp_local_package), no el del sitio (WPLANG) — ver
+ *    ztgrp_monitor_core_package_locale(),
  *  - cualquier otro mismatch o ausencia cuenta como bad.
  */
 
@@ -37,13 +41,25 @@ function ztgrp_monitor_integrity_run() {
 	}
 
 	$files = array_keys( $checksums );
-	$state = ztgrp_monitor_net_get( 'ztgrp_monitor_integrity_state' );
-	if ( ! is_array( $state ) || ! isset( $state['cursor'] ) || $state['wp_version'] !== $wp_version ) {
+
+	// El barrido en curso solo se retoma si sigue siendo comparable: misma versión
+	// de WP, mismo locale de paquete y misma versión del plugin (un upgrade puede
+	// cambiar el criterio de qué cuenta como bad, así que se re-barre desde cero
+	// en lugar de arrastrar hallazgos con el criterio viejo).
+	$locale = ztgrp_monitor_core_package_locale();
+	$state  = ztgrp_monitor_net_get( 'ztgrp_monitor_integrity_state' );
+	if ( ! is_array( $state )
+		|| ! isset( $state['cursor'], $state['wp_version'], $state['locale'], $state['plugin_version'] )
+		|| $state['wp_version'] !== $wp_version
+		|| $state['locale'] !== $locale
+		|| $state['plugin_version'] !== ZTGRP_MONITOR_VERSION ) {
 		$state = array(
-			'wp_version' => $wp_version,
-			'cursor'     => 0,
-			'bad'        => array(),
-			'bad_count'  => 0,
+			'wp_version'     => $wp_version,
+			'locale'         => $locale,
+			'plugin_version' => ZTGRP_MONITOR_VERSION,
+			'cursor'         => 0,
+			'bad'            => array(),
+			'bad_count'      => 0,
 		);
 	}
 
@@ -59,12 +75,17 @@ function ztgrp_monitor_integrity_run() {
 			continue;
 		}
 
+		// Benignos incondicionales: borrados a propósito (hardening) o editados
+		// (aviso legal / branding). Archivos de texto sin rol ejecutable, así que
+		// la exclusión va ANTES de distinguir ausencia de mismatch: dentro de la
+		// rama de ausencia dejaba pasar como "bad" un license.txt modificado.
+		$base = basename( $file );
+		if ( 'readme.html' === $base || 'license.txt' === $base ) {
+			continue;
+		}
+
 		$path = ABSPATH . $file;
 		if ( ! file_exists( $path ) ) {
-			$base = basename( $file );
-			if ( 'readme.html' === $base || 'license.txt' === $base ) {
-				continue; // Benigno: borrados a propósito (hardening).
-			}
 			ztgrp_monitor_integrity_flag( $state, $file . ' (ausente)' );
 			continue;
 		}
@@ -90,6 +111,7 @@ function ztgrp_monitor_integrity_run() {
 			'bad'        => $state['bad'],
 			'checked_at' => time(),
 			'wp_version' => $wp_version,
+			'locale'     => $locale, // Locale del paquete usado para comparar (diagnóstico).
 		)
 	);
 	ztgrp_monitor_net_del( 'ztgrp_monitor_integrity_state' );
@@ -103,12 +125,35 @@ function ztgrp_monitor_integrity_flag( &$state, $entry ) {
 }
 
 /**
+ * Locale del PAQUETE del core instalado (no el del sitio).
+ *
+ * Los paquetes localizados de WordPress definen $wp_local_package dentro de
+ * wp-includes/version.php; el paquete en_US no define esa variable. get_locale()
+ * en cambio sale de la opción WPLANG, que es preferencia de idioma del sitio y
+ * puede no coincidir con los archivos en disco (típico: sitio en es_ES corriendo
+ * archivos en_US). Cuando no coinciden, comparar contra los checksums del locale
+ * equivocado hace fallar exactamente un archivo, wp-includes/version.php, que es
+ * el único que difiere entre paquetes fuera de wp-content/ — falso positivo.
+ * wp-cli verify-checksums usa esta misma fuente, de ahí que discrepara del plugin.
+ */
+function ztgrp_monitor_core_package_locale() {
+	global $wp_local_package;
+	return ! empty( $wp_local_package ) ? (string) $wp_local_package : 'en_US';
+}
+
+/**
  * Checksums oficiales de wp.org, cacheados 24h (se consultan por lotes).
- * Locale del sitio primero; fallback a en_US (es lo que hace wp-cli).
+ * Locale del paquete primero; fallback a en_US si la API no responde para ese
+ * locale (es lo que hace wp-cli).
  */
 function ztgrp_monitor_get_checksums( $wp_version ) {
+	$locale = ztgrp_monitor_core_package_locale();
+
+	// El locale entra en la validación del cache: si cambió (paquete distinto o
+	// arrastre de un cache viejo con el locale equivocado) hay que re-pedirlos.
 	$cached = get_site_transient( 'ztgrp_monitor_checksums' );
-	if ( is_array( $cached ) && isset( $cached['version'], $cached['sums'] ) && $cached['version'] === $wp_version ) {
+	if ( is_array( $cached ) && isset( $cached['version'], $cached['sums'], $cached['locale'] )
+		&& $cached['version'] === $wp_version && $cached['locale'] === $locale ) {
 		return $cached['sums'];
 	}
 
@@ -116,8 +161,8 @@ function ztgrp_monitor_get_checksums( $wp_version ) {
 		require_once ABSPATH . 'wp-admin/includes/update.php';
 	}
 
-	$sums = get_core_checksums( $wp_version, get_locale() );
-	if ( ! is_array( $sums ) && 'en_US' !== get_locale() ) {
+	$sums = get_core_checksums( $wp_version, $locale );
+	if ( ! is_array( $sums ) && 'en_US' !== $locale ) {
 		$sums = get_core_checksums( $wp_version, 'en_US' );
 	}
 	if ( ! is_array( $sums ) ) {
@@ -128,6 +173,7 @@ function ztgrp_monitor_get_checksums( $wp_version ) {
 		'ztgrp_monitor_checksums',
 		array(
 			'version' => $wp_version,
+			'locale'  => $locale,
 			'sums'    => $sums,
 		),
 		DAY_IN_SECONDS
