@@ -16,7 +16,9 @@ para no mezclar los dos cambios en un mismo release.
   viagra, betting) suman +1 con tope 3 y nunca alcanzan solas; link oculto por CSS,
   autor inexistente (inserción directa por SQL), alfabeto ajeno al locale,
   `<script>` ajeno a embeds conocidos y ≥10 dominios externos suman. Calibrado en
-  seco sobre hispanicprwire: de 8 falsos positivos a 0 en 30.843 posts.
+  seco sobre hispanicprwire (de 8 falsos positivos a 0 en 30.843 posts) y elimpulso
+  (274.480 posts: 6 sospechosos, los 6 reales: un post spam y 5 páginas con JS
+  malicioso inyectado).
 - **Registro persistente**: el sospechoso alerta hasta que se revisa, se borra o se
   limpia, no solo el día que apareció.
 - **Claves nuevas** (aditivas): `content_suspect_count`, `content_suspect` (tope 20:

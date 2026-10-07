@@ -82,4 +82,18 @@ en modo solo-métrica).
   positivos de hispanicprwire sin marcar. Lint PHP 7.0 OK.
 - hispanicprwire re-corrido: **0 sospechosos** (antes 8), casi 4 (antes 40),
   peor caso 15 → 3. 30.843 posts en 149 s, 51 MB.
-- [ ] Siguiente: elimpulso (noticias, otro perfil) con el mismo dry-run.
+- [x] Siguiente: elimpulso (noticias, otro perfil) con el mismo dry-run.
+
+### elimpulso (2026-10-07, plugin 1.0.4 activo, usuario wpaudit nuevo)
+- 274.480 posts (post, page, tdb_templates, tdc-review, web-story), 623 s, 55 MB, pausa 0,3 s.
+- **6 sospechosos, 6 verdaderos positivos**: 1 post spam real (`spam:essay writing
+  service`) y 5 páginas con JS malicioso inyectado (`code:obfuscated`, redirector
+  conocido de 2017, confirmado decodificándolo). Detalle e IOCs en el proyecto del
+  cliente: `elimpulso.com/tasks/handoff-2026-10-07-malware-redirector-paginas.md`.
+- Falsos positivos en "casi" (no alcanzaban el umbral), corregidos:
+  - `hidden_link` matcheaba `margin-top:-393px` (bloques del tema) como `top:-393px`
+    → la propiedad ahora tiene que empezar en ese punto.
+  - 183 `code:script` por embeds de `platform.instagram.com`, Vine e Issuu → la lista
+    de embeds acepta cualquier subdominio y suma vine.co / issuu.com.
+- Test unitario de ambos helpers (12 casos, incluye dominio trampa
+  `instagram.com.evil.example`) OK en PHP 7.0 y 8.3.

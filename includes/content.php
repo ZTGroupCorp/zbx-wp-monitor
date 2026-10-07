@@ -506,7 +506,9 @@ function ztgrp_monitor_content_norm_kw( $matches ) {
 }
 
 function ztgrp_monitor_content_has_hidden_link( $content ) {
-	$re = '/<(a|div|span|p|font|section)\b[^>]*\bstyle\s*=\s*["\'][^"\']*?(?:display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0(?![.\d])|(?:left|top|text-indent)\s*:\s*-\d{3,}px)/i';
+	// La propiedad tiene que empezar ahí: "margin-top:-393px" (lo pone el tema
+	// Newspaper en bloques legítimos) no es "top:-393px".
+	$re = '/<(a|div|span|p|font|section)\b[^>]*\bstyle\s*=\s*["\'][^"\']*?(?<![\w-])(?:display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0(?![.\d])|(?:left|top|text-indent)\s*:\s*-\d{3,}px)/i';
 	if ( ! preg_match_all( $re, $content, $m, PREG_OFFSET_CAPTURE ) ) {
 		return false;
 	}
@@ -530,7 +532,8 @@ function ztgrp_monitor_content_has_foreign_script( $content ) {
 	if ( ! preg_match_all( '/<script\b([^>]*)>/i', $content, $m ) ) {
 		return false;
 	}
-	$embeds = '/\bsrc\s*=\s*["\']?(?:https?:)?\/\/(?:www\.)?(?:instagram\.com|platform\.twitter\.com|tiktok\.com|connect\.facebook\.net|embedr\.flickr\.com|platform\.linkedin\.com|w\.soundcloud\.com)\//i';
+	// Cualquier subdominio: elimpulso usa platform.instagram.com además de www.
+	$embeds = '/\bsrc\s*=\s*["\']?(?:https?:)?\/\/(?:[\w-]+\.)*(?:instagram\.com|twitter\.com|tiktok\.com|facebook\.net|flickr\.com|linkedin\.com|soundcloud\.com|vine\.co|issuu\.com)\//i';
 	foreach ( $m[1] as $attrs ) {
 		if ( ! preg_match( $embeds, $attrs ) ) {
 			return true;
