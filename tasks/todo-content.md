@@ -73,4 +73,13 @@ en modo solo-métrica).
 - Señales estructurales limpias: hidden_link 0, code 0, foreign_script 0,
   author_missing 1 (un borrador). ext_domains en 160 posts (comunicados con muchos links).
 - Conclusión: en sitios de prensa/noticias las keywords temáticas solas no pueden
-  alcanzar el umbral. Propuesta de ajuste pendiente de aprobación de JAZ.
+  alcanzar el umbral.
+
+### Ajuste de puntaje (aprobado por JAZ, 2026-10-07)
+- Frases de spam (+5, alcanzan solas) separadas de palabras de tema (+1, tope 3).
+  Código ofuscado +5, alfabeto ajeno +4, ext_domains +1/+2, sin bonus por título.
+- Docker: suite completa OK (E1/E2/E3, allowlist) + 5 réplicas de los falsos
+  positivos de hispanicprwire sin marcar. Lint PHP 7.0 OK.
+- hispanicprwire re-corrido: **0 sospechosos** (antes 8), casi 4 (antes 40),
+  peor caso 15 → 3. 30.843 posts en 149 s, 51 MB.
+- [ ] Siguiente: elimpulso (noticias, otro perfil) con el mismo dry-run.

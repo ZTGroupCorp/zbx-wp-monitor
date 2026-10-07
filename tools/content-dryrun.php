@@ -64,7 +64,7 @@ foreach ( ztgrp_monitor_content_blog_ids() as $zt_blog ) {
 			$zt_cursor = (int) $zt_row->ID;
 			$zt_s      = ztgrp_monitor_content_score( $zt_row, $zt_ctx );
 			foreach ( $zt_s['reasons'] as $zt_r ) {
-				$zt_k             = preg_replace( '/^(kw|ext_domains):.*$/', '$1:*', $zt_r );
+				$zt_k             = preg_replace( '/^(kw|spam|ext_domains):.*$/', '$1:*', $zt_r );
 				$zt_hist[ $zt_k ] = isset( $zt_hist[ $zt_k ] ) ? $zt_hist[ $zt_k ] + 1 : 1;
 			}
 			$zt_line = array( $zt_blog, (int) $zt_row->ID, $zt_row->post_type . '/' . $zt_row->post_status, $zt_s['score'],

@@ -11,10 +11,12 @@ para no mezclar los dos cambios en un mismo release.
   cursor como la integridad. Revisa posts nuevos **por ID** (no por fecha: el spam
   inyectado suele venir con fecha vieja), posts viejos modificados desde la corrida
   anterior y re-evalúa los sospechosos ya registrados. La primera corrida barre todo.
-- **Puntaje** (umbral 5): keywords fuertes/medias (+2 si están en el título), link
-  oculto por CSS, código ofuscado o `<script>` ajeno a embeds conocidos, autor
-  inexistente (inserción directa por SQL), ≥10 dominios externos, alfabeto ajeno
-  al locale del sitio. Una keyword media sola (una nota sobre un casino) no alcanza.
+- **Puntaje** (umbral 5): frases que solo usa el spam ("slot gacor", "buy cialis",
+  "viagra sin receta") y código ofuscado alcanzan solos; palabras de tema (casino,
+  viagra, betting) suman +1 con tope 3 y nunca alcanzan solas; link oculto por CSS,
+  autor inexistente (inserción directa por SQL), alfabeto ajeno al locale,
+  `<script>` ajeno a embeds conocidos y ≥10 dominios externos suman. Calibrado en
+  seco sobre hispanicprwire: de 8 falsos positivos a 0 en 30.843 posts.
 - **Registro persistente**: el sospechoso alerta hasta que se revisa, se borra o se
   limpia, no solo el día que apareció.
 - **Claves nuevas** (aditivas): `content_suspect_count`, `content_suspect` (tope 20:

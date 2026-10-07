@@ -61,13 +61,18 @@ Detecta contenido inyectado típico de un sitio comprometido (casino, farmacia,
 
   | Señal | Puntos | Motivo en `reasons` |
   |---|---|---|
-  | Keyword fuerte (viagra, slot gacor, togel...) | +3 (+2 en título) | `kw:<término>` / `kw:<término>(title)` |
-  | Keyword media (casino, porn, betting...) | +2 (+2 en título) | ídem |
+  | Frase de spam (slot gacor, togel, "buy cialis", "viagra sin receta", replica watches...) | +5: alcanza sola | `spam:<frase>` |
+  | Palabra de tema (casino, betting, viagra, oxycodone, porn...) | +1 c/u, tope 3: nunca alcanza sola | `kw:<palabra>` |
   | Link oculto por CSS | +4 | `hidden_link` |
-  | Código ofuscado / `<script>` que no es un embed conocido | +3 | `code:obfuscated` / `code:script` |
+  | Código ofuscado (`eval(`, `atob(`...) | +5: alcanza solo | `code:obfuscated` |
+  | `<script>` que no es un embed conocido | +3 | `code:script` |
   | Autor inexistente (inserción directa por SQL) | +4 | `author_missing` |
-  | ≥10 / ≥25 dominios externos distintos | +2 / +3 | `ext_domains:<n>` |
-  | Alfabeto ajeno al locale (≥20% de las letras) | +3 | `foreign_script` |
+  | ≥10 / ≥25 dominios externos distintos | +1 / +2 | `ext_domains:<n>` |
+  | Alfabeto ajeno al locale (≥20% de las letras) | +4 | `foreign_script` |
+
+  Calibrado con hispanicprwire (sitio de prensa, 30.843 posts): las palabras de tema
+  aparecen en comunicados legítimos (FDA, hoteles casino, sponsors de apuestas), por
+  eso solo suman a una señal técnica o a una frase de spam.
 
 - **Registro persistente:** un sospechoso alerta hasta que se marca revisado, se
   borra o se limpia. "Marcar revisado" vale mientras el post no se vuelva a editar.

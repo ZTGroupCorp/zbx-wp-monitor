@@ -340,43 +340,63 @@ function ztgrp_monitor_content_context() {
 }
 
 /**
- * Keywords por peso. Fuertes: casi nunca aparecen en contenido legítimo de los
- * sitios de la flota. Medias: pueden aparecer (una nota sobre un casino), por eso
- * solas no llegan al umbral. Filtro `ztgrp_monitor_content_keywords` para ajustar.
+ * Dos listas, calibradas con hispanicprwire (sitio de prensa: 8 de 8 falsos
+ * positivos con keywords sueltas como "viagra" o "casino" en notas legítimas):
+ *
+ *  - spam: frases que solo usa el spam ("slot gacor", "buy cialis", "viagra sin
+ *    receta"). Fragmentos de regex. Una sola alcanza el umbral.
+ *  - topic: palabras del tema, que un sitio de noticias o de prensa usa
+ *    legítimamente. +1 cada una con tope de 3: solas nunca llegan al umbral, solo
+ *    suman a una señal técnica (link oculto, autor inexistente...).
+ *
+ * Filtro `ztgrp_monitor_content_keywords` para ajustar ambas listas.
  */
 function ztgrp_monitor_content_keywords( $ignore ) {
+	$drugs = 'viagra|cialis|levitra|kamagra|sildenafil|tadalafil|tramadol|xanax|phentermine|oxycodone';
 	$lists = apply_filters(
 		'ztgrp_monitor_content_keywords',
 		array(
-			3 => array(
-				'viagra', 'cialis', 'levitra', 'kamagra', 'sildenafil', 'tadalafil', 'tramadol',
-				'xanax', 'phentermine', 'oxycodone', 'slot gacor', 'situs slot', 'slot online',
-				'judi online', 'judi bola', 'togel', 'maxwin', 'sbobet', 'payday loans',
-				'replica watches', 'cheap jerseys', 'essay writing service', 'buy followers',
+			'spam'  => array(
+				'slot\s+gacor', 'situs\s+slot', 'judi\s+online', 'judi\s+bola', 'togel', 'maxwin', 'sbobet',
+				'(?:buy|cheap|order|generic|discount|comprar|compra)\s+(?:' . $drugs . ')',
+				'(?:' . $drugs . ')\s+(?:without\s+(?:a\s+)?prescription|no\s+prescription|sin\s+receta|for\s+sale)',
+				'replica\s+watches', 'cheap\s+jerseys', 'essay\s+writing\s+service',
+				'buy\s+(?:instagram\s+|tiktok\s+|youtube\s+)?(?:followers|likes|views)',
 			),
-			2 => array(
-				'casino', 'online casino', 'poker online', 'porn', 'porno', 'xxx', 'escort',
-				'escorts', 'sex cams', 'hentai', 'betting', 'sportsbook', 'crypto airdrop',
-				'pragmatic play', 'cbd gummies', 'keto gummies', 'onlyfans leaks',
+			'topic' => array(
+				'casino', 'online casino', 'poker online', 'slot online', 'betting', 'sportsbook',
+				'porn', 'porno', 'xxx', 'escort', 'escorts', 'sex cams', 'hentai', 'onlyfans leaks',
+				'payday loans', 'crypto airdrop', 'pragmatic play', 'cbd gummies', 'keto gummies',
+				'viagra', 'cialis', 'levitra', 'kamagra', 'sildenafil', 'tadalafil', 'tramadol',
+				'xanax', 'phentermine', 'oxycodone',
 			),
 		)
 	);
 
 	$ignore = array_map( 'strtolower', $ignore );
-	$out    = array();
-	foreach ( $lists as $weight => $words ) {
-		$words = array_diff( array_map( 'strtolower', (array) $words ), $ignore );
-		if ( ! $words ) {
-			continue;
-		}
+	$out    = array( 'ignore' => $ignore );
+
+	if ( ! empty( $lists['spam'] ) ) {
+		$out['spam'] = ztgrp_monitor_content_kw_regex( (array) $lists['spam'] );
+	}
+	// Las palabras de la allowlist salen de la lista de tema; las frases de spam
+	// se filtran por match en el puntaje (ver ztgrp_monitor_content_score()).
+	$topic = array_diff( array_map( 'strtolower', (array) $lists['topic'] ), $ignore );
+	if ( $topic ) {
 		$alts = array();
-		foreach ( $words as $w ) {
+		foreach ( $topic as $w ) {
 			$alts[] = str_replace( ' ', '\s+', preg_quote( $w, '/' ) );
 		}
-		// Límites de palabra Unicode: "casino" no matchea dentro de "casinoteca".
-		$out[ (int) $weight ] = '/(?<![\p{L}\p{N}])(' . implode( '|', $alts ) . ')(?![\p{L}\p{N}])/iu';
+		$out['topic'] = ztgrp_monitor_content_kw_regex( $alts );
 	}
 	return $out;
+}
+
+/**
+ * Límites de palabra Unicode: "casino" no matchea dentro de "casinoteca".
+ */
+function ztgrp_monitor_content_kw_regex( $alts ) {
+	return '/(?<![\p{L}\p{N}])(' . implode( '|', $alts ) . ')(?![\p{L}\p{N}])/iu';
 }
 
 /**
@@ -403,20 +423,23 @@ function ztgrp_monitor_content_score( $row, $ctx ) {
 	$score   = 0;
 	$reasons = array();
 
-	// 1. Keywords: cada término distinto suma su peso; +2 si además está en el título.
-	foreach ( $ctx['keywords'] as $weight => $re ) {
-		if ( ! preg_match_all( $re, $title . "\n" . $content, $m ) ) {
-			continue;
+	$kw  = $ctx['keywords'];
+	$all = $title . "\n" . $content;
+
+	// 1a. Frases de spam: cada una distinta alcanza el umbral por sí sola.
+	if ( isset( $kw['spam'] ) && preg_match_all( $kw['spam'], $all, $m ) ) {
+		foreach ( array_diff( ztgrp_monitor_content_norm_kw( $m[1] ), $kw['ignore'] ) as $phrase ) {
+			$score    += ZTGRP_MONITOR_CONTENT_THRESHOLD;
+			$reasons[] = 'spam:' . $phrase;
 		}
-		$in_title = preg_match_all( $re, $title, $tm ) ? ztgrp_monitor_content_norm_kw( $tm[1] ) : array();
-		foreach ( ztgrp_monitor_content_norm_kw( $m[1] ) as $kw ) {
-			$score += $weight;
-			$reason = 'kw:' . $kw;
-			if ( in_array( $kw, $in_title, true ) ) {
-				$score += 2;
-				$reason .= '(title)';
-			}
-			$reasons[] = $reason;
+	}
+
+	// 1b. Palabras de tema: +1 cada una, tope 3 (solas no llegan al umbral).
+	if ( isset( $kw['topic'] ) && preg_match_all( $kw['topic'], $all, $m ) ) {
+		$topic = ztgrp_monitor_content_norm_kw( $m[1] );
+		$score += min( 3, count( $topic ) );
+		foreach ( $topic as $word ) {
+			$reasons[] = 'kw:' . $word;
 		}
 	}
 
@@ -426,9 +449,10 @@ function ztgrp_monitor_content_score( $row, $ctx ) {
 		$reasons[] = 'hidden_link';
 	}
 
-	// 3. Código: ofuscación siempre; <script> salvo embeds conocidos.
+	// 3. Código: la ofuscación dentro de un post no tiene uso legítimo (alcanza
+	//    sola); un <script> que no es de un embed conocido suma.
 	if ( preg_match( '/\beval\s*\(|\batob\s*\(|document\.write\s*\(|String\.fromCharCode|base64_decode/i', $content ) ) {
-		$score    += 3;
+		$score    += ZTGRP_MONITOR_CONTENT_THRESHOLD;
 		$reasons[] = 'code:obfuscated';
 	} elseif ( ztgrp_monitor_content_has_foreign_script( $content ) ) {
 		$score    += 3;
@@ -442,13 +466,14 @@ function ztgrp_monitor_content_score( $row, $ctx ) {
 		$reasons[] = 'author_missing';
 	}
 
-	// 5. Muchos dominios externos distintos.
+	// 5. Muchos dominios externos distintos (peso bajo: los comunicados de prensa
+	//    legítimos suelen tener decenas de links).
 	$ext = ztgrp_monitor_content_external_domains( $content, $ctx );
 	if ( $ext >= 25 ) {
-		$score    += 3;
+		$score    += 2;
 		$reasons[] = 'ext_domains:' . $ext;
 	} elseif ( $ext >= 10 ) {
-		$score    += 2;
+		$score    += 1;
 		$reasons[] = 'ext_domains:' . $ext;
 	}
 
@@ -458,7 +483,7 @@ function ztgrp_monitor_content_score( $row, $ctx ) {
 		$letters = (int) preg_match_all( '/\p{L}/u', $text );
 		$foreign = (int) preg_match_all( '/[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}\p{Cyrillic}\p{Thai}\p{Arabic}\p{Hebrew}\p{Devanagari}]/u', $text );
 		if ( $letters >= 50 && $foreign / $letters >= 0.2 ) {
-			$score    += 3;
+			$score    += 4;
 			$reasons[] = 'foreign_script';
 		}
 	}
