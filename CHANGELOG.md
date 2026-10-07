@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.2.0 — sin publicar
+
+Detección diaria de **posts spam** (contenido inyectado en un sitio comprometido:
+casino, farmacia, "slot gacor", links ocultos). Solo lectura: detecta y reporta,
+nunca toca los posts. Se salta la 1.1.0 (Fase 1: DB/cache/Wordfence, sin empezar)
+para no mezclar los dos cambios en un mismo release.
+
+- **Job diario** `ztgrp_monitor_content_run` (`includes/content.php`), por lotes con
+  cursor como la integridad. Revisa posts nuevos **por ID** (no por fecha: el spam
+  inyectado suele venir con fecha vieja), posts viejos modificados desde la corrida
+  anterior y re-evalúa los sospechosos ya registrados. La primera corrida barre todo.
+- **Puntaje** (umbral 5): keywords fuertes/medias (+2 si están en el título), link
+  oculto por CSS, código ofuscado o `<script>` ajeno a embeds conocidos, autor
+  inexistente (inserción directa por SQL), ≥10 dominios externos, alfabeto ajeno
+  al locale del sitio. Una keyword media sola (una nota sobre un casino) no alcanza.
+- **Registro persistente**: el sospechoso alerta hasta que se revisa, se borra o se
+  limpia, no solo el día que apareció.
+- **Claves nuevas** (aditivas): `content_suspect_count`, `content_suspect` (tope 20:
+  blog, id, tipo, estado, puntaje, motivos; sin títulos ni contenido),
+  `content_new_24h`, `content_new_avg_30d`, `content_checked_at`.
+- **Settings**: lista de sospechosos con link de edición y botón "Marcar revisado"
+  (deja de alertar mientras el post no se vuelva a editar), allowlist de dominios y
+  palabras por sitio (guardarla re-barre todo), "Ejecutar revisión ahora".
+- **Multisite**: el sitio principal recorre todos los subsitios; cada sospechoso
+  lleva su `blog`.
+- El job se agenda también en `init` si falta: el auto-update de la flota no dispara
+  el hook de activación.
+
 ## 1.0.4 — 2026-07-29
 
 Dos falsos positivos de `checksums_ok=0` que dejaron 4 triggers High de Zabbix
