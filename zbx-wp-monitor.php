@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       ZT Zabbix WP Monitor
  * Plugin URI:        https://github.com/ZTGroupCorp/zbx-wp-monitor
- * Description:       Expone métricas de salud del sitio (updates, integridad del core, admins, cron, autoload) a Zabbix vía REST autenticado por token.
- * Version:           1.0.4
+ * Description:       Expone métricas de salud del sitio (updates, integridad del core, posts spam, admins, cron, autoload) a Zabbix vía REST autenticado por token.
+ * Version:           1.2.0
  * Author:            ZT Group
  * Author URI:        https://ztgroupcorp.com
  * License:           GPL-2.0-or-later
@@ -16,11 +16,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'ZTGRP_MONITOR_VERSION', '1.0.4' );
+define( 'ZTGRP_MONITOR_VERSION', '1.2.0' );
 define( 'ZTGRP_MONITOR_FILE', __FILE__ );
 
 require_once __DIR__ . '/includes/metrics.php';
 require_once __DIR__ . '/includes/integrity.php';
+require_once __DIR__ . '/includes/content.php';
 
 /* -------------------------------------------------------------------------
  * Almacenamiento multisite-aware
@@ -68,10 +69,12 @@ function ztgrp_monitor_activate() {
 	}
 	// Primera corrida de integridad a los 2 minutos para tener datos pronto.
 	wp_schedule_single_event( time() + 120, 'ztgrp_monitor_integrity_run' );
+	ztgrp_monitor_content_schedule();
 }
 
 function ztgrp_monitor_deactivate() {
 	wp_clear_scheduled_hook( 'ztgrp_monitor_integrity_run' );
+	wp_clear_scheduled_hook( 'ztgrp_monitor_content_run' );
 }
 
 /**
@@ -196,6 +199,8 @@ function ztgrp_monitor_settings_page() {
 		echo '<div class="notice notice-success"><p>Check de integridad encolado (corre por WP-Cron en la próxima visita).</p></div>';
 	}
 
+	ztgrp_monitor_content_handle_post();
+
 	$token     = ztgrp_monitor_get_token();
 	$endpoint  = is_multisite()
 		? get_rest_url( get_main_site_id(), 'ztgrp-monitor/v1/status' )
@@ -276,6 +281,8 @@ function ztgrp_monitor_settings_page() {
 			<?php wp_nonce_field( 'ztgrp_monitor_runcheck' ); ?>
 			<button class="button" name="ztgrp_runcheck" value="1">Ejecutar check ahora</button>
 		</form>
+
+		<?php ztgrp_monitor_content_admin_section(); ?>
 	</div>
 	<?php
 }
