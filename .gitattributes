@@ -3,3 +3,4 @@
 .gitignore export-ignore
 tasks/ export-ignore
 docs/ export-ignore
+tools/ export-ignore

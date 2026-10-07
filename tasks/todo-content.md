@@ -62,3 +62,15 @@ plugin montado RO; `php -l` limpio en PHP 7.0 y 8.3.
 - Upgrade: sin eventos agendados, el siguiente request los recrea (init).
 Pendiente: falsos positivos reales solo se miden en la flota (por eso el rollout
 en modo solo-métrica).
+
+## Calibración en flota (dry-run read-only, `docs/DRYRUN-posts-spam.md`)
+
+### hispanicprwire (2026-10-07, plugin 1.0.4 activo, usuario wpaudit)
+- 30.843 posts, 130 s, 51 MB. **8 sospechosos, 8 falsos positivos, 0 spam real.**
+- Todos por keywords temáticas en comunicados legítimos: fármacos (FDA, opioides,
+  clínicas de disfunción eréctil), apuestas (sponsor de LaLiga), "online casino".
+  40 casi (score 3-4): sobre todo hoteles casino con "casino" en el título.
+- Señales estructurales limpias: hidden_link 0, code 0, foreign_script 0,
+  author_missing 1 (un borrador). ext_domains en 160 posts (comunicados con muchos links).
+- Conclusión: en sitios de prensa/noticias las keywords temáticas solas no pueden
+  alcanzar el umbral. Propuesta de ajuste pendiente de aprobación de JAZ.
