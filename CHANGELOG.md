@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.0 — sin publicar
+## 1.2.0 — 2026-10-15
 
 Detección diaria de **posts spam** (contenido inyectado en un sitio comprometido:
 casino, farmacia, "slot gacor", links ocultos). Solo lectura: detecta y reporta,
