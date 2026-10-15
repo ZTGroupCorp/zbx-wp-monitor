@@ -11,6 +11,10 @@ $ztgrp_keys = array(
 	'ztgrp_monitor_token',
 	'ztgrp_monitor_integrity',
 	'ztgrp_monitor_integrity_state',
+	'ztgrp_monitor_content',
+	'ztgrp_monitor_content_state',
+	'ztgrp_monitor_content_allow',
+	'ztgrp_monitor_content_ack',
 );
 
 // En multisite el plugin guarda en options de RED (Network Activate → un host por red).

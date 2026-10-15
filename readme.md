@@ -22,7 +22,15 @@ vía un endpoint REST autenticado por token. Pensado para monitoreo server-side
   "checksums_ok": 1,
   "checksums_bad_count": 0,
   "checksums_bad": [],
-  "checksums_checked_at": 1780000000
+  "checksums_checked_at": 1780000000,
+  "content_suspect_count": 1,
+  "content_suspect": [
+    {"blog": 1, "id": 459, "type": "post", "status": "publish", "score": 13,
+     "reasons": ["kw:slot gacor(title)", "kw:maxwin(title)", "kw:situs slot"]}
+  ],
+  "content_new_24h": 3,
+  "content_new_avg_30d": 2.4,
+  "content_checked_at": 1780000000
 }
 ```
 
@@ -38,6 +46,43 @@ vía un endpoint REST autenticado por token. Pensado para monitoreo server-side
 - `checksums_bad`: array con las rutas que fallan (tope 20), los ausentes
   marcados `" (ausente)"`. Sirve para triage directo desde la alerta de Zabbix,
   sin entrar por SSH al sitio.
+- `content_*`: posts spam, revisados a diario por WP-Cron (ver abajo).
+
+## Posts spam (`content_*`)
+
+Detecta contenido inyectado típico de un sitio comprometido (casino, farmacia,
+"slot gacor", links ocultos). Solo lectura: nunca modifica ni borra posts.
+
+- **Qué revisa:** posts nuevos por ID (el spam inyectado suele venir con fecha
+  vieja, así que no se filtra por fecha), posts viejos modificados desde la corrida
+  anterior y los sospechosos ya registrados. La primera corrida revisa todo.
+  Alcance: post types públicos (menos adjuntos), estados publish/future/draft/pending/private.
+- **Puntaje** (sospechoso desde 5):
+
+  | Señal | Puntos | Motivo en `reasons` |
+  |---|---|---|
+  | Frase de spam (slot gacor, togel, "buy cialis", "viagra sin receta", replica watches...) | +5: alcanza sola | `spam:<frase>` |
+  | Palabra de tema (casino, betting, viagra, oxycodone, porn...) | +1 c/u, tope 3: nunca alcanza sola | `kw:<palabra>` |
+  | Link oculto por CSS | +4 | `hidden_link` |
+  | Código ofuscado (`eval(`, `atob(`...) | +5: alcanza solo | `code:obfuscated` |
+  | `<script>` que no es un embed conocido | +3 | `code:script` |
+  | Autor inexistente (inserción directa por SQL) | +4 | `author_missing` |
+  | ≥10 / ≥25 dominios externos distintos | +1 / +2 | `ext_domains:<n>` |
+  | Alfabeto ajeno al locale (≥20% de las letras) | +4 | `foreign_script` |
+
+  Calibrado con hispanicprwire (sitio de prensa, 30.843 posts): las palabras de tema
+  aparecen en comunicados legítimos (FDA, hoteles casino, sponsors de apuestas), por
+  eso solo suman a una señal técnica o a una frase de spam.
+
+- **Registro persistente:** un sospechoso alerta hasta que se marca revisado, se
+  borra o se limpia. "Marcar revisado" vale mientras el post no se vuelva a editar.
+- **Allowlist por sitio** (dominios y palabras): en la página de ajustes. Guardarla
+  re-revisa todos los posts.
+- `content_new_24h`: posts creados desde la corrida anterior (0 en un barrido
+  completo); `content_new_avg_30d`: promedio de las corridas anteriores, para
+  detectar picos de volumen.
+- Las keywords y los dominios permitidos por defecto se ajustan con los filtros
+  `ztgrp_monitor_content_keywords` y `ztgrp_monitor_content_default_domains`.
 
 ## Instalación
 
@@ -66,6 +111,8 @@ Semántica de las métricas en multisite:
   un subsitio.
 - `autoload_kb`, `cron_overdue`: reflejan el **sitio principal** (donde Zabbix
   sondea); no se agregan en vivo sobre toda la red para no recargar el endpoint.
+- `content_*`: **toda la red**. El job corre en el sitio principal y recorre los
+  subsitios; cada sospechoso indica su `blog`.
 
 En instalaciones single-site el comportamiento es el de siempre (token y datos
 por sitio, página en **Ajustes → ZT Zabbix Monitor**).
