@@ -2,9 +2,9 @@
 
 Corre el mismo código de puntaje del plugin (`includes/content.php`) sobre los posts
 de un sitio y muestra qué marcaría. **Solo lectura:** no copia archivos al server,
-no escribe options, no agenda cron y no toca posts. No hace falta tener instalado
-el plugin 1.2.0 (con 1.0.x activo funciona; con ≥ 1.2.0 instalado NO, porque
-redeclararía las funciones).
+no escribe options, no agenda cron y no toca posts. Funciona con o sin el plugin
+instalado, en cualquier versión: al armarse, la copia del detector renombra sus
+funciones (`ztgrp_dryrun_content_*`) y lee la misma allowlist del sitio.
 
 **Target:** el server del sitio, por SSH. **Precondición:** wp-cli en el server y un
 usuario con lectura del docroot (alcanza un usuario read-only como `wpaudit`).
@@ -54,5 +54,8 @@ Referencia: hispanicprwire, 30.843 posts en 130 s, 51 MB, sin carga visible.
 
 ## Variantes
 
-- elimpulso: `ssh audit-elimp 'cd /usr/share/nginx/html && wp --allow-root eval-file - 2000 0.2' < ...`
+- elimpulso: `ssh audit-elimp 'cd /usr/share/nginx/html && wp eval-file - 2000 0.2' < ...`
+  (usuario `wpaudit`; usar un solo intento SSH: fail2ban banea rápido).
 - Multisite (usabox): `wp --url=https://www.usabox.com/ eval-file - ...` (recorre todos los subsitios).
+- Solo algunos sitios de una red: tercer argumento con los IDs, por ejemplo hdn
+  `ssh audit-hprw 'cd /home/wp_multi2 && wp --url=https://wordpress2.hdnweb.com eval-file - 0 0.3 45,51,55' < ...`.

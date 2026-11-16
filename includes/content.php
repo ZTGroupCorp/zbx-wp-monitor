@@ -30,6 +30,7 @@ define( 'ZTGRP_MONITOR_CONTENT_BATCH', 200 );
 define( 'ZTGRP_MONITOR_CONTENT_MODIFIED_CAP', 500 );
 define( 'ZTGRP_MONITOR_CONTENT_LIST_CAP', 20 );
 define( 'ZTGRP_MONITOR_CONTENT_ACK_CAP', 1000 );
+define( 'ZTGRP_MONITOR_CONTENT_LEGACY_AUTHOR', 20 );
 
 add_action( 'ztgrp_monitor_content_run', 'ztgrp_monitor_content_run' );
 add_action( 'init', 'ztgrp_monitor_content_schedule' );
@@ -59,7 +60,10 @@ function ztgrp_monitor_content_run() {
 	$state  = ztgrp_monitor_net_get( 'ztgrp_monitor_content_state' );
 
 	// Corrida nueva (o arrastrada de otra versión del plugin: el criterio de
-	// puntaje pudo cambiar, así que se arranca de cero con las marcas guardadas).
+	// puntaje pudo cambiar, así que se arranca de cero). Si el último resultado lo
+	// produjo otra versión, además se descartan las marcas: barrido completo, para
+	// que los posts viejos que el criterio anterior dejó pasar se evalúen con el
+	// nuevo (hdn: 39 posts de casinos en ruso que la 1.2.0 no marcaba).
 	if ( ! is_array( $state ) || ! isset( $state['plugin_version'], $state['queue'] )
 		|| ZTGRP_MONITOR_VERSION !== $state['plugin_version'] ) {
 		$blogs    = ztgrp_monitor_content_blog_ids();
@@ -78,7 +82,7 @@ function ztgrp_monitor_content_run() {
 			'phase'          => '',
 			'cursor'         => 0,
 			'start_mark'     => null,
-			'marks'          => $result['marks'],
+			'marks'          => ZTGRP_MONITOR_VERSION === $result['plugin_version'] ? $result['marks'] : array(),
 			'suspects'       => $suspects,
 			'new'            => 0,
 			'baseline'       => false,
@@ -226,7 +230,8 @@ function ztgrp_monitor_content_finish( $state, $result ) {
 	ztgrp_monitor_net_set(
 		'ztgrp_monitor_content',
 		array(
-			'checked_at' => time(),
+			'checked_at'     => time(),
+			'plugin_version' => ZTGRP_MONITOR_VERSION,
 			'suspects'   => $state['suspects'],
 			'new_24h'    => $new,
 			'avg_30d'    => $avg,
@@ -248,7 +253,8 @@ function ztgrp_monitor_content_result() {
 	$r = ztgrp_monitor_net_get( 'ztgrp_monitor_content' );
 	$r = is_array( $r ) ? $r : array();
 	return array(
-		'checked_at' => isset( $r['checked_at'] ) ? (int) $r['checked_at'] : 0,
+		'checked_at'     => isset( $r['checked_at'] ) ? (int) $r['checked_at'] : 0,
+		'plugin_version' => isset( $r['plugin_version'] ) ? (string) $r['plugin_version'] : '',
 		'suspects'   => isset( $r['suspects'] ) && is_array( $r['suspects'] ) ? $r['suspects'] : array(),
 		'new_24h'    => isset( $r['new_24h'] ) ? (int) $r['new_24h'] : 0,
 		'avg_30d'    => isset( $r['avg_30d'] ) ? (float) $r['avg_30d'] : 0,
@@ -336,7 +342,27 @@ function ztgrp_monitor_content_context() {
 		// Sitios en alfabeto latino: CJK/cirílico/etc. en masa es señal de spam.
 		'latin'    => ! in_array( $lang, array( 'ru', 'uk', 'bg', 'sr', 'mk', 'be', 'kk', 'zh', 'ja', 'ko', 'th', 'ar', 'he', 'fa', 'ur', 'hi', 'el' ), true ),
 		'ack'      => ztgrp_monitor_content_acks(),
+		'legacy'   => ztgrp_monitor_content_legacy_authors(),
 	);
+}
+
+/**
+ * IDs de autor con muchos posts en el sitio actual. Si un autor así no existe,
+ * es un resto de migración o de usuarios borrados en bloque (hdn: 3.288 posts del
+ * autor 40 en rosemarynews), no una inserción por SQL. Una consulta por sitio y por
+ * request: agrupa sobre el índice de post_author, sin leer contenido.
+ */
+function ztgrp_monitor_content_legacy_authors() {
+	global $wpdb;
+	static $cache = array();
+	$blog = get_current_blog_id();
+	if ( ! isset( $cache[ $blog ] ) ) {
+		$ids = $wpdb->get_col(
+			$wpdb->prepare( "SELECT post_author FROM {$wpdb->posts} GROUP BY post_author HAVING COUNT(*) >= %d", ZTGRP_MONITOR_CONTENT_LEGACY_AUTHOR )
+		);
+		$cache[ $blog ] = array_map( 'intval', (array) $ids );
+	}
+	return $cache[ $blog ];
 }
 
 /**
@@ -362,13 +388,16 @@ function ztgrp_monitor_content_keywords( $ignore ) {
 				'(?:' . $drugs . ')\s+(?:without\s+(?:a\s+)?prescription|no\s+prescription|sin\s+receta|for\s+sale)',
 				'replica\s+watches', 'cheap\s+jerseys', 'essay\s+writing\s+service',
 				'buy\s+(?:instagram\s+|tiktok\s+|youtube\s+)?(?:followers|likes|views)',
+				// Spam de casinos en ruso (hdn/miciudadtv): "espejo oficial" = dominio
+				// alternativo para esquivar bloqueos.
+				'(?:официальное|рабочее|актуальное)\s+зеркало', 'зеркало\s+(?:на\s+сегодня|казино)',
 			),
 			'topic' => array(
 				'casino', 'online casino', 'poker online', 'slot online', 'betting', 'sportsbook',
 				'porn', 'porno', 'xxx', 'escort', 'escorts', 'sex cams', 'hentai', 'onlyfans leaks',
 				'payday loans', 'crypto airdrop', 'pragmatic play', 'cbd gummies', 'keto gummies',
 				'viagra', 'cialis', 'levitra', 'kamagra', 'sildenafil', 'tadalafil', 'tramadol',
-				'xanax', 'phentermine', 'oxycodone',
+				'xanax', 'phentermine', 'oxycodone', 'казино',
 			),
 		)
 	);
@@ -460,8 +489,12 @@ function ztgrp_monitor_content_score( $row, $ctx ) {
 	}
 
 	// 4. Autor inexistente: WordPress reasigna o borra los posts al borrar un
-	//    usuario, así que un huérfano suele ser una inserción directa por SQL.
-	if ( ! ztgrp_monitor_content_author_exists( (int) $row->post_author ) ) {
+	//    usuario, así que un huérfano suele ser una inserción directa por SQL. Salvo
+	//    que ese autor tenga muchos posts en el sitio: entonces es un resto de
+	//    migración (redes multisite importadas) y no suma.
+	$author = (int) $row->post_author;
+	if ( ! ztgrp_monitor_content_author_exists( $author )
+		&& ! in_array( $author, isset( $ctx['legacy'] ) ? $ctx['legacy'] : array(), true ) ) {
 		$score    += 4;
 		$reasons[] = 'author_missing';
 	}
@@ -477,12 +510,19 @@ function ztgrp_monitor_content_score( $row, $ctx ) {
 		$reasons[] = 'ext_domains:' . $ext;
 	}
 
-	// 6. Alfabeto ajeno al sitio (≥20% de las letras, con texto suficiente).
+	// 6. Alfabeto ajeno al sitio, con texto suficiente. Un post mayormente en otro
+	//    alfabeto (>50% de las letras) es spam por sí solo en un sitio latino (hdn:
+	//    posts en ruso/ucraniano de apuestas sin la palabra "casino"); entre 20% y
+	//    50% (una nota con citas en otro idioma) necesita otra señal.
 	if ( $ctx['latin'] ) {
 		$text    = wp_strip_all_tags( $title . ' ' . $content );
 		$letters = (int) preg_match_all( '/\p{L}/u', $text );
 		$foreign = (int) preg_match_all( '/[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}\p{Cyrillic}\p{Thai}\p{Arabic}\p{Hebrew}\p{Devanagari}]/u', $text );
-		if ( $letters >= 50 && $foreign / $letters >= 0.2 ) {
+		$share   = $letters >= 50 ? $foreign / $letters : 0;
+		if ( $share > 0.5 ) {
+			$score    += ZTGRP_MONITOR_CONTENT_THRESHOLD;
+			$reasons[] = 'foreign_script';
+		} elseif ( $share >= 0.2 ) {
 			$score    += 4;
 			$reasons[] = 'foreign_script';
 		}
@@ -500,7 +540,10 @@ function ztgrp_monitor_content_score( $row, $ctx ) {
 function ztgrp_monitor_content_norm_kw( $matches ) {
 	$out = array();
 	foreach ( $matches as $kw ) {
-		$out[] = preg_replace( '/\s+/u', ' ', strtolower( $kw ) );
+		// mbstring no está garantizado en la flota; sin él, las palabras no ASCII
+		// (cirílico) quedan con su capitalización original.
+		$kw    = function_exists( 'mb_strtolower' ) ? mb_strtolower( $kw, 'UTF-8' ) : strtolower( $kw );
+		$out[] = preg_replace( '/\s+/u', ' ', $kw );
 	}
 	return array_values( array_unique( $out ) );
 }

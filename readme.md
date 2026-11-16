@@ -66,9 +66,9 @@ Detecta contenido inyectado típico de un sitio comprometido (casino, farmacia,
   | Link oculto por CSS | +4 | `hidden_link` |
   | Código ofuscado (`eval(`, `atob(`...) | +5: alcanza solo | `code:obfuscated` |
   | `<script>` que no es un embed conocido | +3 | `code:script` |
-  | Autor inexistente (inserción directa por SQL) | +4 | `author_missing` |
+  | Autor inexistente (inserción directa por SQL); no cuenta si ese autor tiene 20+ posts en el sitio (resto de migración) | +4 | `author_missing` |
   | ≥10 / ≥25 dominios externos distintos | +1 / +2 | `ext_domains:<n>` |
-  | Alfabeto ajeno al locale (≥20% de las letras) | +4 | `foreign_script` |
+  | Alfabeto ajeno al locale: 20-50% de las letras / más del 50% | +4 / +5 (alcanza solo) | `foreign_script` |
 
   Calibrado con hispanicprwire (sitio de prensa, 30.843 posts): las palabras de tema
   aparecen en comunicados legítimos (FDA, hoteles casino, sponsors de apuestas), por
