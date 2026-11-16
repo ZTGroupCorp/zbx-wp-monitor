@@ -6,14 +6,15 @@
  * includes/content.php (ver tools/build-dryrun.sh) y se ejecuta por wp-cli leyendo
  * de stdin, así que no deja archivos en el server:
  *
- *   ssh <host> 'cd <docroot> && wp eval-file - [limite] [pausa_seg]' < content-dryrun.build.php
+ *   ssh <host> 'cd <docroot> && wp eval-file - [limite] [pausa_seg] [blogs]' < content-dryrun.build.php
  *
  * Solo lectura: no escribe options, no agenda cron, no toca posts. Usa el mismo
- * código de puntaje que el plugin. Requiere que el sitio NO tenga instalado el
- * plugin >= 1.2.0 (redeclararía las funciones).
+ * código de puntaje que el plugin; build-dryrun.sh renombra sus funciones, así que
+ * corre también donde el plugin >= 1.2.0 está instalado.
  *
  * Args: limite = cuántos posts revisar por sitio, empezando por los más nuevos
- * (0 = todos); pausa_seg = pausa entre lotes de 200, para no cargar la base (def. 0.2).
+ * (0 = todos); pausa_seg = pausa entre lotes de 200, para no cargar la base (def. 0.2);
+ * blogs = IDs separados por coma para revisar solo esos sitios de una red (opcional).
  */
 
 // Que nada de content.php quede enganchado a hooks en este proceso.
@@ -29,6 +30,7 @@ if ( ! function_exists( 'ztgrp_monitor_net_get' ) ) {
 
 $zt_limit = isset( $args[0] ) ? max( 0, (int) $args[0] ) : 0;
 $zt_pause = isset( $args[1] ) ? max( 0, (float) $args[1] ) : 0.2;
+$zt_only  = isset( $args[2] ) ? array_map( 'intval', explode( ',', $args[2] ) ) : array();
 $zt_t0    = microtime( true );
 
 global $wpdb;
@@ -38,6 +40,9 @@ $zt_hist     = array();
 $zt_scanned  = 0;
 
 foreach ( ztgrp_monitor_content_blog_ids() as $zt_blog ) {
+	if ( $zt_only && ! in_array( $zt_blog, $zt_only, true ) ) {
+		continue;
+	}
 	$zt_switched = is_multisite() && get_current_blog_id() !== $zt_blog;
 	if ( $zt_switched ) {
 		switch_to_blog( $zt_blog );

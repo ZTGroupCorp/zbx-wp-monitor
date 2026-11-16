@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.2.1 — sin publicar
+
+Ajustes del detector de posts spam con datos de la red multisite de hdn (wordpress2).
+
+- **`author_missing` ignora autores "heredados":** un autor inexistente con 20 o más
+  posts en el sitio es un resto de migración o de usuarios borrados en bloque, no una
+  inserción por SQL. En hdn eran 3.545 de 3.575 sospechosos (3.288 del autor 40 en
+  rosemarynews). Se calcula con una consulta agrupada por `post_author`, una vez por
+  sitio y por corrida.
+- **Spam de casinos en ruso:** "казино" como palabra de tema y "официальное/рабочее
+  зеркало" ("espejo oficial") como frase de spam.
+- **Alfabeto ajeno en dos niveles:** más del 50% de las letras en otro alfabeto alcanza
+  solo (+5); entre 20% y 50% (nota con citas) sigue en +4. En miciudadtv (blog 45) había
+  64 posts en cirílico (casinos y apuestas): la 1.2.0 marcaba 25, la 1.2.1 marca 62,
+  sin ningún post normal del sitio.
+- Prueba en seco en hdn (miciudadtv, prensamexicana, rosemarynews; 87.954 posts): de
+  3.559 sospechosos a 46 antes del ajuste de alfabeto.
+- Palabras clave normalizadas en UTF-8 cuando hay `mbstring` ("Казино" y "казино"
+  cuentan una vez).
+- **Barrido completo al cambiar de versión:** el resultado guarda la versión del plugin
+  que lo produjo; si no coincide con la instalada, la siguiente corrida descarta las
+  marcas y revisa todos los posts con el criterio nuevo. Sin esto, los posts viejos que
+  la 1.2.0 dejó pasar (los 39 de casinos en ruso) nunca se volvían a mirar. Ese día
+  `content_new_24h` da 0, como en cualquier barrido completo.
+- `tools/`: la prueba en seco funciona también en sitios con el plugin ≥ 1.2.0 instalado
+  (renombra sus funciones al armarse) y acepta una lista de blogs.
+
 ## 1.2.0 — 2026-10-15
 
 Detección diaria de **posts spam** (contenido inyectado en un sitio comprometido:
