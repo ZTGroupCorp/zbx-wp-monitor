@@ -3,7 +3,8 @@ WordPress plugin "ZT Zabbix WP Monitor" (repo `ZTGroupCorp/zbx-wp-monitor`, publ
 
 ## Where it runs
 - Endpoint `GET /wp-json/ztgrp-monitor/v1/status` with header `X-ZTGRP-Token`; no token gives 401.
-- Read-only: counts, versions, core checksum result, and (since 1.2.0) a daily spam-post scan (`content_*` keys, no titles or content). Never users or credentials. Current version 1.2.0 (header, `ZTGRP_MONITOR_VERSION`, tag `v1.2.0`); whether the GitHub release asset is published is not verified here.
+- Read-only: counts, versions, core checksum result, a daily spam-post scan (`content_*`, since 1.2.0; since 1.2.2 each suspect carries its URL and, only if published, its title) and performance metrics (`db_*`, `cache_*`, `lat_*`, since 1.3.0, `includes/perf.php`). Never users or credentials. Current version 1.3.0 (header, `ZTGRP_MONITOR_VERSION`, tag `v1.3.0`, release asset published 2026-11-25).
+- `db_*` are measured by WP-Cron (`ztgrp_monitor_db_refresh`, at most hourly, stored in option `ztgrp_monitor_db`), never inside the endpoint: on elimpulso the measurement takes ~2.4 s and Zabbix's HTTP agent times out at 3 s. Until the first run they are `null` with `db_checked_at = 0`.
 - Zabbix side: template "WordPress site by plugin" (10716), macro `{$WP.MON.TOKEN}`, managed from the `zabbix.ztgrp.net` project.
 - Verification hosts with SSH: elimpulso (`audit-elimp`, docroot `/usr/share/nginx/html`) and hispanicprwire (`audit-hprw`, docroot `/home/hispanicwp/public_html`, read-only user).
 
@@ -29,8 +30,8 @@ No test suite in the repo. Syntax: `docker run --rm -v "$PWD":/app -w /app php:8
 - Checksums must use the package locale (`$wp_local_package`), not `WPLANG` (fixed in 1.0.4).
 
 ## Pointers
-- `readme.md`, `CHANGELOG.md`, `docs/HANDOFF-zabbix-1.2.0.md`, `tasks/todo.md` (untracked; plan for 1.1.0, not started) and `tasks/todo-content.md` (tracked).
+- `readme.md`, `CHANGELOG.md`, `docs/HANDOFF-zabbix-1.2.0.md`, `docs/HANDOFF-zabbix-1.3.0.md`, `tasks/todo.md` (Phase 1: 1.3.0 released; 1.4.0 Wordfence bridge pending, discovery notes already there) and `tasks/todo-content.md`.
 - Memory: `/home/jaz/.claude/projects/-home-jaz-projects-zabbix-wp-plugin/memory/MEMORY.md` and `-home-jaz-projects-zabbix-ztgrp-net/memory/zbx-wp-monitor-plugin.md`.
-- Worktree `.claude/worktrees/content-spam-scan` (branch `worktree-content-spam-scan`); do not remove without asking JAZ.
+- Worktree `.claude/worktrees/content-spam-scan` (now on local branch `fase1-observabilidad`, already merged in v1.3.0); do not remove without asking JAZ.
 
 Last reviewed: 2026-11-13
