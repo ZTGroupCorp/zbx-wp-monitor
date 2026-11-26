@@ -9,24 +9,40 @@
 ## v1.3.0: DB, cache, latencia
 
 - [x] **0.** Fechar `1.2.2 — sin publicar` en el CHANGELOG (release publicada 2026-11-25 ET)
-- [ ] **1. `ztgrp_monitor_db_metrics()`**: `db_size_mb`, `db_overhead_mb`, `db_revisions`,
-  `db_expired_transients`, `db_options_rows`
-  - Tamaño y overhead desde `information_schema.TABLES` filtrado por `base_prefix` (no toda la
-    BD: en ontario varias instalaciones comparten servidor). Una sola consulta.
-  - Revisiones y transients vencidos: solo del sitio principal; en DBs grandes (elimpulso 274k
-    posts) medir el costo antes. Cache en transient de red por 1h para no pegarle a la BD en
-    cada poll de Zabbix.
-- [ ] **2. `ztgrp_monitor_cache_metrics()`**: `cache_object` (0/1, `wp_using_ext_object_cache()`),
-  `cache_opcache`, `cache_opcache_hit_rate`, `cache_opcache_used_pct`, `cache_php_mem_limit_mb`,
-  `cache_php_max_exec`. OPcache solo tiene sentido en la petición web (FPM); en CLI da otro valor.
-- [ ] **3. `ztgrp_monitor_latency_metrics()`**: `lat_db_ms` (un `SELECT 1` cronometrado),
-  `lat_req_ms` (tiempo desde `$_SERVER['REQUEST_TIME_FLOAT']` hasta armar el JSON).
-- [ ] **4. Merge** en `ztgrp_monitor_collect_metrics()` (claves existentes intactas); bump a
-  **1.3.0** (header + constante); CHANGELOG con fecha antes del merge; ejemplo JSON en readme
-- [ ] **5. Handoff** `docs/HANDOFF-zabbix-1.3.0.md`: campo, tipo, significado, trigger sugerido
-- [ ] **6. Verificar** en Docker (WP + MariaDB desechables, single y multisite): `php -l`, JSON con
-  claves viejas presentes, sin warnings; luego `wp eval` read-only en hprw y elimpulso
-- [ ] **7. Release** PR + merge (JAZ) + `gh release create v1.3.0` con el zip; verificar flota
+- [x] **1. `ztgrp_monitor_db_metrics()`** (`includes/perf.php`): `db_size_mb`, `db_overhead_mb`,
+  `db_revisions`, `db_expired_transients`, `db_options_rows`, `db_checked_at`
+  - Tamaño y overhead desde `information_schema.TABLES` filtrado por `base_prefix` (esc_like:
+    una tabla `wpxajena` no entra). Con `innodb_file_per_table=0` el overhead solo cuenta
+    MyISAM/Aria (cada InnoDB reportaría el libre de todo ibdata).
+  - **Cambio de diseño:** la medición corre en WP-Cron (`ztgrp_monitor_db_refresh`), no en el
+    endpoint. En elimpulso tarda 2,4 s (17,5 GB, 116k revisiones) y el timeout del HTTP agent
+    de Zabbix es 3 s por defecto. El endpoint lee la option `ztgrp_monitor_db` y agenda el
+    refresco si tiene > 1h o es de otra versión. Sin dato: null y `db_checked_at=0`.
+- [x] **2. `ztgrp_monitor_cache_metrics()`**: `cache_object`, `cache_opcache`, `cache_opcache_hit_rate`,
+  `cache_opcache_used_pct`, `cache_php_mem_limit_mb`, `cache_php_max_exec`. OPcache con
+  `restrict_api` → null; en CLI → null.
+- [x] **3. Latencia**: `lat_db_ms`, `lat_req_ms` (calculado al final del colector).
+- [x] **4. Merge** en `ztgrp_monitor_collect_metrics()` (claves existentes intactas); bump a
+  1.3.0; readme con ejemplo y sección; uninstall borra `ztgrp_monitor_db`; deactivate limpia
+  el hook. **CHANGELOG sigue "1.3.0 — sin publicar": fechar en el PR justo antes del merge.**
+- [x] **5. Handoff** `docs/HANDOFF-zabbix-1.3.0.md` (umbrales propuestos por ZT, OK de JAZ)
+- [x] **6. Verificado** 2026-11-25:
+  - Lint PHP 7.0 y 8.4 de todos los archivos.
+  - Docker (MariaDB 11 + WordPress php8.3-apache, endpoint HTTP real): 401 sin token; 1.3.0
+    con las 18 claves de 1.2.2 intactas + 14 nuevas; valores = datos sembrados (3 revisiones,
+    1 transient vencido, el vigente no cuenta); OPcache 1; `memory_limit=-1` → -1.
+  - Multisite (red con blog 2 de 7 revisiones y 2 vencidos): conteos del principal (5 y 1),
+    incluso llamado desde el contexto del blog 2; tamaño de las 28 tablas de la red.
+  - Flujo cron: 1a llamada null + 1 evento; tras el cron valores y 0 eventos; versión vieja
+    sirve el dato y agenda refresco. 0 warnings PHP en todo.
+  - Prod, solo lectura (`ztgrp_monitor_db_measure()` por stdin, sin escribir): hprw 2,6 ms,
+    elimpulso 2.434 ms (motivo del cambio a cron).
+- [ ] **7. Release**: PR, fechar CHANGELOG, merge (JAZ), `gh release create v1.3.0` con el zip,
+  verificar flota (hprw y elimpulso estaban en 1.2.1 el 25-nov a la noche)
+
+### Hallazgos para otros proyectos
+- **hispanicprwire (hdn):** 1,58 GB recuperables de 3,2 GB (`db_overhead_mb`); probablemente
+  restos de `wfLiveTrafficHuman`. Y el scan de Wordfence falla (ver abajo).
 
 ## v1.4.0: puente Wordfence (descubrimiento hecho, código diferido)
 
