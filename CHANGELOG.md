@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.2 — sin publicar
+## 1.2.2 — 2026-11-25
 
 `content_suspect` trae título y URL de cada sospechoso, para que la alerta de Zabbix sea
 accionable sin buscar el post (pedido del proyecto Zabbix, 2026-11-25).
