@@ -1,6 +1,22 @@
 # Changelog
 
-## 1.2.2 — sin publicar
+## 1.3.0 — 2026-11-25
+
+Métricas de rendimiento, solo lectura y aditivas (Fase 1 del roadmap; el puente
+Wordfence queda para la 1.4.0).
+
+- **Base de datos (`db_*`):** tamaño y overhead de las tablas de la instalación (filtradas
+  por prefijo: en servidores compartidos el schema tiene otras), revisiones, transients
+  vencidos y filas de `options` del sitio principal. Los mide WP-Cron como mucho una vez
+  por hora, nunca dentro del endpoint: en elimpulso (17 GB) la medición tarda ~2,4 s y se
+  comería el timeout del HTTP agent de Zabbix. Hasta la primera medición salen `null` con
+  `db_checked_at` = 0.
+- **Caches (`cache_*`):** object cache persistente, OPcache (activo, tasa de aciertos, %
+  de memoria usada), `memory_limit` y `max_execution_time`.
+- **Latencia (`lat_*`):** `SELECT 1` contra la base y tiempo total del endpoint.
+- Lo no disponible sale `null`, no 0.
+
+## 1.2.2 — 2026-11-25
 
 `content_suspect` trae título y URL de cada sospechoso, para que la alerta de Zabbix sea
 accionable sin buscar el post (pedido del proyecto Zabbix, 2026-11-25).

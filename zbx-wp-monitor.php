@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       ZT Zabbix WP Monitor
  * Plugin URI:        https://github.com/ZTGroupCorp/zbx-wp-monitor
- * Description:       Expone métricas de salud del sitio (updates, integridad del core, posts spam, admins, cron, autoload) a Zabbix vía REST autenticado por token.
- * Version:           1.2.2
+ * Description:       Expone métricas de salud del sitio (updates, integridad del core, posts spam, admins, cron, autoload, base de datos, caches, latencia) a Zabbix vía REST autenticado por token.
+ * Version:           1.3.0
  * Author:            ZT Group
  * Author URI:        https://ztgroupcorp.com
  * License:           GPL-2.0-or-later
@@ -16,12 +16,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'ZTGRP_MONITOR_VERSION', '1.2.2' );
+define( 'ZTGRP_MONITOR_VERSION', '1.3.0' );
 define( 'ZTGRP_MONITOR_FILE', __FILE__ );
 
 require_once __DIR__ . '/includes/metrics.php';
 require_once __DIR__ . '/includes/integrity.php';
 require_once __DIR__ . '/includes/content.php';
+require_once __DIR__ . '/includes/perf.php';
 
 /* -------------------------------------------------------------------------
  * Almacenamiento multisite-aware
@@ -75,6 +76,7 @@ function ztgrp_monitor_activate() {
 function ztgrp_monitor_deactivate() {
 	wp_clear_scheduled_hook( 'ztgrp_monitor_integrity_run' );
 	wp_clear_scheduled_hook( 'ztgrp_monitor_content_run' );
+	wp_clear_scheduled_hook( 'ztgrp_monitor_db_refresh' );
 }
 
 /**

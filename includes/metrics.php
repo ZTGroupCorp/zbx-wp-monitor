@@ -4,6 +4,7 @@
  * archivos del core que fallan el checksum (`checksums_bad`): son rutas del core
  * de WordPress, públicas y conocidas, tope 20 entradas. Nada sensible. Los posts
  * sospechosos (`content_*`, ver content.php) van por ID y motivos, sin contenido.
+ * Rendimiento (`db_*`, `cache_*`, `lat_*`) en perf.php.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -16,7 +17,7 @@ function ztgrp_monitor_collect_metrics() {
 		$integrity = array();
 	}
 
-	return array_merge( array(
+	$metrics = array_merge( array(
 		'plugin_version'        => ZTGRP_MONITOR_VERSION,
 		'wp_version'            => get_bloginfo( 'version' ),
 		'php_version'           => PHP_VERSION,
@@ -34,7 +35,15 @@ function ztgrp_monitor_collect_metrics() {
 			? array_values( array_map( 'strval', $integrity['bad'] ) )
 			: array(),
 		'checksums_checked_at'  => isset( $integrity['checked_at'] ) ? (int) $integrity['checked_at'] : 0,
-	), ztgrp_monitor_content_metrics() );
+	), ztgrp_monitor_content_metrics(),
+		ztgrp_monitor_db_metrics(),
+		ztgrp_monitor_cache_metrics(),
+		array( 'lat_db_ms' => ztgrp_monitor_latency_db_ms() )
+	);
+
+	// Al final, para que cubra todo el trabajo del endpoint.
+	$metrics['lat_req_ms'] = ztgrp_monitor_latency_req_ms();
+	return $metrics;
 }
 
 /**

@@ -10,7 +10,7 @@ vía un endpoint REST autenticado por token. Pensado para monitoreo server-side
 
 ```json
 {
-  "plugin_version": "1.0.4",
+  "plugin_version": "1.3.0",
   "wp_version": "6.9.4",
   "php_version": "8.2.20",
   "core_updates": 0,
@@ -31,7 +31,21 @@ vía un endpoint REST autenticado por token. Pensado para monitoreo server-side
   ],
   "content_new_24h": 3,
   "content_new_avg_30d": 2.4,
-  "content_checked_at": 1780000000
+  "content_checked_at": 1780000000,
+  "db_size_mb": 412.7,
+  "db_overhead_mb": 3.1,
+  "db_revisions": 18234,
+  "db_expired_transients": 12,
+  "db_options_rows": 1544,
+  "db_checked_at": 1780000000,
+  "cache_object": 1,
+  "cache_opcache": 1,
+  "cache_opcache_hit_rate": 99.42,
+  "cache_opcache_used_pct": 61.3,
+  "cache_php_mem_limit_mb": 256,
+  "cache_php_max_exec": 30,
+  "lat_db_ms": 0.41,
+  "lat_req_ms": 187.5
 }
 ```
 
@@ -49,6 +63,25 @@ vía un endpoint REST autenticado por token. Pensado para monitoreo server-side
   marcados `" (ausente)"`. Sirve para triage directo desde la alerta de Zabbix,
   sin entrar por SSH al sitio.
 - `content_*`: posts spam, revisados a diario por WP-Cron (ver abajo).
+- `db_*`, `cache_*`, `lat_*`: rendimiento (ver abajo).
+
+## Rendimiento (`db_*`, `cache_*`, `lat_*`)
+
+Solo lectura. Lo que no se puede medir sale `null` (distinto de 0). CPU, RAM y disco
+no están: los mide el agente Zabbix del host.
+
+- `db_size_mb` / `db_overhead_mb`: tamaño y espacio libre recuperable de las tablas con
+  el prefijo de la instalación (en multisite, toda la red). Con InnoDB en tablespace
+  compartido (`innodb_file_per_table=0`) el overhead solo cuenta tablas MyISAM/Aria.
+- `db_revisions`, `db_expired_transients`, `db_options_rows`: del sitio principal.
+- Los `db_*` los mide WP-Cron como mucho una vez por hora (en bases grandes tarda segundos,
+  no se hace dentro del endpoint); `db_checked_at` dice cuándo. Recién instalado o
+  actualizado, salen `null` con `db_checked_at` = 0 hasta que corre el cron.
+- `cache_object`: 1 si hay object cache persistente (Redis, Memcached).
+- `cache_opcache*`: OPcache de la petición web; `null` si la API está restringida
+  (`opcache.restrict_api`). `cache_php_mem_limit_mb` = -1 si no hay límite.
+- `lat_db_ms`: ida y vuelta de un `SELECT 1`. `lat_req_ms`: tiempo de PHP desde que
+  recibe la petición hasta armar la respuesta (carga de WordPress incluida).
 
 ## Posts spam (`content_*`)
 
