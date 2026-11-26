@@ -37,7 +37,7 @@
     sirve el dato y agenda refresco. 0 warnings PHP en todo.
   - Prod, solo lectura (`ztgrp_monitor_db_measure()` por stdin, sin escribir): hprw 2,6 ms,
     elimpulso 2.434 ms (motivo del cambio a cron).
-- [ ] **7. Release**: PR, fechar CHANGELOG, merge (JAZ), `gh release create v1.3.0` con el zip,
+- [x] **7. Release**: PR, fechar CHANGELOG, merge (JAZ), `gh release create v1.3.0` con el zip,
   verificar flota (hprw y elimpulso estaban en 1.2.1 el 25-nov a la noche)
 
 ### Hallazgos para otros proyectos

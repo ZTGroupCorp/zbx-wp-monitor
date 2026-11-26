@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.3.0 — sin publicar
+## 1.3.0 — 2026-11-25
 
 Métricas de rendimiento, solo lectura y aditivas (Fase 1 del roadmap; el puente
 Wordfence queda para la 1.4.0).
