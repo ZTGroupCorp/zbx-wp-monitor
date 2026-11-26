@@ -46,10 +46,12 @@ primer cron. Si el WP-Cron del sitio está roto, `db_checked_at` envejece: eso e
 ## Triggers sugeridos
 
 `T` = template. Umbrales propuestos por ZT; ajustar después de ver 1-2 semanas de datos.
+El item maestro consulta cada 1h: las ventanas van por cantidad de lecturas (`#3` = últimas 3,
+unas 3 horas), no por minutos, que con un dato por hora evaluarían un solo valor.
 
 | Trigger | Expresión (orientativa) | Severidad |
 |---|---|---|
-| Métricas de DB sin actualizar (WP-Cron no corre) | `last(/T/db_checked_at)>0 and now()-last(/T/db_checked_at)>3h` | Warning |
+| Métricas de DB sin actualizar (WP-Cron no corre) | `last(/T/db_checked_at)>0 and now()-last(/T/db_checked_at)>6h` | Warning |
 | La base creció más de 20% en un día | `last(/T/db_size_mb)>1.2*last(/T/db_size_mb,#1:now-1d)` | Average |
 | Mucho espacio recuperable en la base | `last(/T/db_overhead_mb)>1024 and last(/T/db_overhead_mb)>0.3*last(/T/db_size_mb)` | Info (hoy saltaría en hispanicprwire) |
 | Transients vencidos acumulados | `last(/T/db_expired_transients)>1000` | Warning |
@@ -57,13 +59,16 @@ primer cron. Si el WP-Cron del sitio está roto, `db_checked_at` envejece: eso e
 | Revisiones acumuladas | `last(/T/db_revisions)>100000` | Info (hoy saltaría en elimpulso) |
 | Object cache se cayó | `last(/T/cache_object)=0 and last(/T/cache_object,#2)=1` | Average |
 | OPcache apagado | `last(/T/cache_opcache)=0` | Warning |
-| OPcache casi lleno | `min(/T/cache_opcache_used_pct,1h)>90` | Warning |
-| OPcache con pocos aciertos | `max(/T/cache_opcache_hit_rate,1h)<90` | Warning |
-| Base lenta | `avg(/T/lat_db_ms,15m)>50` | Average |
-| Endpoint lento | `avg(/T/lat_req_ms,15m)>3000` | Warning |
+| OPcache casi lleno | `min(/T/cache_opcache_used_pct,#3)>90` | Warning |
+| OPcache con pocos aciertos | `max(/T/cache_opcache_hit_rate,#3)<90` | Warning |
+| Base lenta | `avg(/T/lat_db_ms,#3)>50` | Average |
+| Endpoint lento | `avg(/T/lat_req_ms,#3)>3000` | Warning |
 
 - `cache_opcache_hit_rate` baja justo después de reiniciar PHP-FPM o vaciar OPcache: por
-  eso el trigger mira el máximo de 1h, no el último valor.
+  eso el trigger mira el máximo de las últimas 3 lecturas, no el último valor.
+- `db_checked_at`: el refresco lo agenda la consulta de Zabbix cuando el dato tiene más de
+  1h y lo ejecuta WP-Cron después; en un sitio sin visitas puede correr recién con la
+  consulta siguiente. Lo normal es que el dato tenga entre 1 y 3 horas: de ahí las 6h.
 - `lat_req_ms` incluye todo lo que hace el endpoint (también leer los resultados de
   integridad y spam): sirve como tendencia de "qué tan pesado está WordPress" en el sitio.
 - Sitios multisite: `db_revisions`, `db_expired_transients` y `db_options_rows` son del
