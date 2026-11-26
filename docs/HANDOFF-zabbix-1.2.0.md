@@ -11,7 +11,7 @@ Items dependientes del item maestro HTTP que ya consulta `/wp-json/ztgrp-monitor
 | Clave JSON | JSONPath | Tipo | Significado |
 |---|---|---|---|
 | `content_suspect_count` | `$.content_suspect_count` | Numeric (unsigned) | Posts sospechosos registrados y sin revisar (toda la red en multisite) |
-| `content_suspect` | `$.content_suspect` | Text | Hasta 20 sospechosos: `blog`, `id`, `type`, `status`, `score`, `reasons` |
+| `content_suspect` | `$.content_suspect` | Text | Hasta 20 sospechosos: `blog`, `id`, `type`, `status`, `score`, `reasons`; desde 1.2.2 también `url` (permalink o URL de edición) y `title` (solo publicados, vacío en los demás). El título lo escribe quien publicó: no evaluar regex de triggers sobre él. |
 | `content_new_24h` | `$.content_new_24h` | Numeric (unsigned) | Posts creados desde la corrida diaria anterior (0 en un barrido completo) |
 | `content_new_avg_30d` | `$.content_new_avg_30d` | Numeric (float) | Promedio de `content_new_24h` de las corridas anteriores (hasta 30) |
 | `content_checked_at` | `$.content_checked_at` | Numeric (unsigned), unixtime | Última corrida completa; 0 = todavía no corrió |

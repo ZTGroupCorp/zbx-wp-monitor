@@ -25,8 +25,9 @@ vía un endpoint REST autenticado por token. Pensado para monitoreo server-side
   "checksums_checked_at": 1780000000,
   "content_suspect_count": 1,
   "content_suspect": [
-    {"blog": 1, "id": 459, "type": "post", "status": "publish", "score": 13,
-     "reasons": ["kw:slot gacor(title)", "kw:maxwin(title)", "kw:situs slot"]}
+    {"blog": 1, "id": 459, "type": "post", "status": "publish", "score": 15,
+     "reasons": ["spam:slot gacor", "spam:maxwin", "spam:situs slot"],
+     "title": "Slot Gacor Maxwin Hari Ini", "url": "https://ejemplo.com/slot-gacor-maxwin-hari-ini/"}
   ],
   "content_new_24h": 3,
   "content_new_avg_30d": 2.4,
@@ -34,8 +35,9 @@ vía un endpoint REST autenticado por token. Pensado para monitoreo server-side
 }
 ```
 
-- Conteos, versiones y las rutas del core que fallan el checksum — nunca
-  usuarios, credenciales ni datos del sitio.
+- Conteos, versiones, las rutas del core que fallan el checksum y, por cada post
+  sospechoso, su URL y (solo si está publicado) su título — nunca usuarios,
+  credenciales, contenido de posts ni títulos de borradores o privados.
 - Sin token válido → 401.
 - `checksums_*`: integridad del core contra los checksums oficiales de wp.org,
   calculada a diario por WP-Cron en lotes (no carga el request). Se ignora

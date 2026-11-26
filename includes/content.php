@@ -264,20 +264,28 @@ function ztgrp_monitor_content_result() {
 }
 
 /**
- * Claves content_* del endpoint. Sin títulos ni contenido: ID, tipo, estado,
- * puntaje y motivos alcanzan para abrir el post desde la alerta.
+ * Claves content_* del endpoint. Por sospechoso: ID, tipo, estado, puntaje y
+ * motivos, más `url` (para abrirlo desde la alerta) y `title` solo si está
+ * publicado (los títulos de borradores y privados no salen del sitio). Nunca el
+ * contenido. Título y URL se resuelven acá, para los hasta 20 de la lista, y no en
+ * el barrido: siempre al día y sin migrar los sospechosos ya guardados.
  */
 function ztgrp_monitor_content_metrics() {
 	$r    = ztgrp_monitor_content_result();
 	$list = array();
 	foreach ( array_slice( $r['suspects'], 0, ZTGRP_MONITOR_CONTENT_LIST_CAP ) as $e ) {
+		$blog = (int) $e['blog'];
+		$id   = (int) $e['id'];
+		$link = ztgrp_monitor_content_link( $blog, $id );
 		$list[] = array(
-			'blog'    => (int) $e['blog'],
-			'id'      => (int) $e['id'],
+			'blog'    => $blog,
+			'id'      => $id,
 			'type'    => (string) $e['type'],
 			'status'  => (string) $e['status'],
 			'score'   => (int) $e['score'],
 			'reasons' => array_values( array_map( 'strval', (array) $e['reasons'] ) ),
+			'title'   => $link['title'],
+			'url'     => $link['url'],
 		);
 	}
 	return array(
@@ -287,6 +295,53 @@ function ztgrp_monitor_content_metrics() {
 		'content_new_avg_30d'   => $r['avg_30d'],
 		'content_checked_at'    => $r['checked_at'],
 	);
+}
+
+/**
+ * Título y URL de un sospechoso, en el contexto de su blog (en multisite la URL
+ * lleva el dominio real del subsitio).
+ *
+ * - Publicado: permalink + título.
+ * - Cualquier otro estado (borrador, pendiente, privado, programado: un `future`
+ *   tiene permalink pero da 404 hasta su fecha): URL de edición y título vacío.
+ *   La URL de edición se arma a mano: get_edit_post_link() devuelve vacío sin un
+ *   usuario con permisos, y el endpoint lo llama Zabbix con el token, sin login.
+ * - Ya no existe: ambos vacíos (el próximo barrido lo saca de la lista).
+ */
+function ztgrp_monitor_content_link( $blog, $id ) {
+	$switched = is_multisite() && get_current_blog_id() !== $blog;
+	if ( $switched ) {
+		switch_to_blog( $blog );
+	}
+
+	$out  = array( 'title' => '', 'url' => '' );
+	$post = get_post( $id );
+	if ( $post ) {
+		if ( 'publish' === $post->post_status ) {
+			$out['title'] = ztgrp_monitor_content_plain_title( $post->post_title );
+			$out['url']   = (string) get_permalink( $post );
+		} else {
+			$out['url'] = admin_url( 'post.php?post=' . $id . '&action=edit' );
+		}
+	}
+
+	if ( $switched ) {
+		restore_current_blog();
+	}
+	return $out;
+}
+
+/**
+ * Título como texto plano de una línea, tope 80 caracteres. Lo escribe quien
+ * publicó el post (en un sitio comprometido, el atacante) y termina en alertas
+ * de Zabbix: sin HTML, sin entidades y sin caracteres de control ni saltos.
+ */
+function ztgrp_monitor_content_plain_title( $title ) {
+	$t = wp_strip_all_tags( html_entity_decode( (string) $title, ENT_QUOTES | ENT_HTML5, 'UTF-8' ) );
+	$t = trim( (string) preg_replace( '/[\x00-\x1F\x7F]+|\s+/u', ' ', $t ) );
+	// mb_substr no corta un carácter UTF-8 por la mitad (WordPress trae un
+	// reemplazo si falta mbstring).
+	return mb_strlen( $t, 'UTF-8' ) > 80 ? rtrim( mb_substr( $t, 0, 79, 'UTF-8' ) ) . '…' : $t;
 }
 
 function ztgrp_monitor_content_blog_ids() {

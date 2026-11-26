@@ -1,6 +1,26 @@
 # Changelog
 
-## 1.2.1 — sin publicar
+## 1.2.2 — sin publicar
+
+`content_suspect` trae título y URL de cada sospechoso, para que la alerta de Zabbix sea
+accionable sin buscar el post (pedido del proyecto Zabbix, 2026-11-25).
+
+- **`url`** en cada elemento: permalink si el post está publicado; si no (borrador,
+  pendiente, privado, programado), la URL de edición en wp-admin. En multisite se resuelve
+  en el blog del post, así que lleva el dominio real del subsitio. La URL de edición se arma
+  a mano: `get_edit_post_link()` devuelve vacío sin usuario logueado (el endpoint lo llama
+  Zabbix con el token).
+- **`title`** solo para posts publicados (decisión de JAZ: los títulos de borradores y
+  privados no salen del sitio); vacío en los demás. Texto plano de una línea (sin HTML, sin
+  entidades, sin caracteres de control), tope 80 caracteres sin cortar UTF-8.
+- Se resuelven en el endpoint para los hasta 20 de la lista, no en el barrido: siempre al
+  día y sin migrar los sospechosos ya guardados.
+- Aditivo: los campos existentes no cambian. **Aviso para Zabbix:** el título lo escribe
+  quien publicó el post; si el preprocesado lo agrega a la línea sobre la que corre la regex
+  del trigger (`code:|score ...`), un título como "Promo code: 50%" lo dispararía. La regex
+  tiene que evaluarse solo sobre `score` y `reasons`.
+
+## 1.2.1 — 2026-11-16
 
 Ajustes del detector de posts spam con datos de la red multisite de hdn (wordpress2).
 
